@@ -14,3 +14,12 @@ jobs:
       uses: xu-cheng/latex-action@v2
       with:
         root_file: main.tex
+    - name: Upload pdf to the gh-pages branch
+        run: |
+          git config --global user.name 'Your Name'
+          git config --global user.email 'your-username@users.noreply.github.com'
+          git checkout gh-pages
+          git add main.pdf
+          git commit -m "Automated upload"
+          git push origin gh-pages
+      

@@ -10,10 +10,17 @@ jobs:
     steps:
     - name: Set up Git repository
       uses: actions/checkout@v2
+
     - name: Github Action for LaTeX
       uses: xu-cheng/latex-action@v2
       with:
         root_file: main.tex
+
+    - name: Change branch
+      uses: actions/checkout@v2
+      with:
+        ref: gh-pages
+
     - name: Upload pdf to the gh-pages branch
       run: |
         git config --global user.name ffyr2w
@@ -22,4 +29,3 @@ jobs:
         git add main.pdf
         git commit -m "Automated upload"
         git push origin gh-pages
-      

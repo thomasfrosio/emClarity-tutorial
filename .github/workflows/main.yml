@@ -15,11 +15,11 @@ jobs:
       with:
         root_file: main.tex
     - name: Upload pdf to the gh-pages branch
-        run: |
-          git config --global user.name ffyr2w
-          git config --global user.email ffyr2w@users.noreply.github.com
-          git checkout gh-pages
-          git add main.pdf
-          git commit -m "Automated upload"
-          git push origin gh-pages
+      run: |
+        git config --global user.name ffyr2w
+        git config --global user.email ffyr2w@users.noreply.github.com
+        git checkout gh-pages
+        git add main.pdf
+        git commit -m "Automated upload"
+        git push origin gh-pages
       

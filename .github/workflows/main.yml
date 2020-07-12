@@ -15,6 +15,7 @@ jobs:
       uses: xu-cheng/latex-action@v2
       with:
         root_file: main.tex
+        working_directory: compiled_pdf/
 
     - name: Change branch
       uses: actions/checkout@v2
@@ -25,7 +26,6 @@ jobs:
       run: |
         git config --global user.name ffyr2w
         git config --global user.email ffyr2w@users.noreply.github.com
-        git checkout gh-pages
-        git add main.pdf
+        git add compiled_pdf/main.pdf
         git commit -m "Automated upload"
         git push origin gh-pages

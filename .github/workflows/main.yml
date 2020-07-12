@@ -16,14 +16,22 @@ jobs:
       with:
         root_file: main.tex
 
-    - name: Change branch
-      uses: actions/checkout@v2
-      with:
-        ref: gh-pages
+#     - name: Change branch
+#       uses: actions/checkout@v2
+#       with:
+#         ref: gh-pages
 
-    - run: |
-        ls /github/workspace
-        ls **
+    - name: Check pdf files
+      run: |
+          file main.pdf | grep -q ' PDF '
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@master
+      with:
+        name: emClarity-tutorial-pdf
+        path: ./
+      if: always()
+
 #     - name: Upload pdf to the gh-pages branch
 #       run: |
 #         git config --global user.name ffyr2w

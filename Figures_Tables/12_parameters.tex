@@ -1,0 +1,66 @@
+% Parameters for avg
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{| l || p{110.5mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{alignRaw} parameters]{\code{alignRaw} parameters. Your parameter file should have the following parameters.\\
+\textcolor{myred}{\textbf{*}} indicates the required parameters, \textcolor{blue}{\textbf{*}} indicates expert parameters. Expert parameters should not be changed except if you know what you are doing. The other parameters are optional.}\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Sampling}}\\
+\hline
+
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+
+-- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Current bin factor (1 means no binning). The sub-region tomograms at this given binning must be already reconstructed in the \code{cache} directory. You must use the same sampling than during \code{avg}.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Mask}}\\
+\hline
+-- \code{Ali\_mType}\textcolor{myred}{\textbf{*}} & Type of mask; ``cylinder'', ``sphere'', ``rectangle''.\\
+-- \code{particleRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] particle radius, in \si{\angstrom}. It should be the smallest values to contain particle. For particles in a lattice, neighboring particles can be used in alignment by specifying a larger mask size, with \code{Ali\_Radius}, but this parameter must correspond to the central unit.\\
+-- \code{Ali\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}. The mask size must be large enough to contain the entire particle (i.e. larger than \code{particleRadius}), the delocalized signal, proper apodization, and to avoid wraparound error in cross-correlation.\\
+-- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom}, relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
+
+-- \code{Peak\_mRadius} & Further restrict the translations to this radius. By default (0), the translations are limited to the \code{particleRadius}.\\
+
+-- \code{flgCenterRefCOM} & Whether or not the references should be shifted to their center-of-mass before starting the alignment\footnote{For membrane proteins, or phage particles for example, this parameter should be shut off either from the beginning, or after a cycle or two.}. Default=1.\\
+
+
+-- \code{scaleCalcSize}\textcolor{blue}{\textbf{*}} & Scale the box size (section \ref{sec:algo:avg:box}) by this number. Default=1.5.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Symmetry}}\\
+\hline
+
+-- \code{Raw\_classes\_odd}\textcolor{myred}{\textbf{*}} & Parameter used to control the C symmetry of the first half set. It should be ``\code{[0; <C>.*ones(2,1)]}'', where \code{<C>} is the central symmetry. This is equivalent to \code{[0; <C>; <C>]}.\\
+-- \code{Raw\_classes\_eve}\textcolor{myred}{\textbf{*}} & Parameter used to control the C symmetry of the second half set. It should be identical to \code{Raw\_classes\_odd}.\\
+%-- \code{force_no_symmetry} & Turn off the symmetry of the particle. Default=0.\\
+-- \code{symmetry} & New parameter used to control the symmetry. CX, I/I2, O, and DX are supported. The old default will be used if this parameter is not specified.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Angular search}}\\
+\hline
+
+-- \code{Raw\_angleSearch}\textcolor{myred}{\textbf{*}} & Angular search, in degrees. Format is [$\Theta_{out},\ \Delta_{out},\ \Theta_{in},\ \Delta_{out}$]. For example, [$180,\ 15,\ 180,\ 12$], specifies a $\pm$180\textdegree\ out of plane search (polar and azimuth angles) with 15\textdegree\ steps and $\pm$180\textdegree\ in plane search (planar angles) with 12\textdegree\ steps.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Others}}\\
+\hline
+
+-- \code{subTomoMeta}\textcolor{myred}{\textbf{*}} & Project name. At this step, {\emClarity} excepts to find the metadata \code{subTomoMeta}.mat in the project directory. Most output files will have the project name as prefix.\\
+
+-- \code{Raw\_className}\textcolor{myred}{\textbf{*}} & Class ID for subtomogram averaging and alignment. You should leave it set to zero.\\
+
+-- \code{Cls\_className}\textcolor{myred}{\textbf{*}} & Class ID for classification. You should leave it set to zero for now. For more information, see section \ref{sec:classification}.\\
+
+-- \code{Fsc\_bfactor}\textcolor{myred}{\textbf{*}} & Global B-factor applied to both references. Although it can be a vector, at this stage {\emClarity} will only use the first number as B-factor. See \ref{sec:algo:avg:wiener} for more detail.\\
+
+-- \code{flgClassify}\textcolor{myred}{\textbf{*}} & Whether or not this cycle is a classification cycle. It must be 0 if subtomogram alignment is the next step. More information on this in \ref{sec:classification}.\\
+
+-- \code{use\_v2\_SF3D} & Whether or not the new per-particle sampling function procedure should be used, as opposed to the older ``grouped'' sampling functions. This is the default since {\emClarity} 1.5.1.0. Default=1.\\
+
+% I don't think this one is really supported...?
+%-- \code{flgCutOutVolumes}\textcolor{blue}{\textbf{*}} & ... Default=0.\\
+
+\hline
+\end{longtable}

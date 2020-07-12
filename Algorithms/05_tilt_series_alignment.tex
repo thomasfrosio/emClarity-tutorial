@@ -1,0 +1,40 @@
+\subsection{Tilt-series alignment} \label{sec:algo:tilt_series_alignment}
+
+\subsubsection{Pre-processing}
+
+\subsubsection{Patch tracking}
+
+\subsubsection{Refining on beads}
+
+%% WORFLOW:
+
+% 1) If skip view, create a copy of the series with these images removed.
+% 2) If the image rotation - 180 > atand(nY./nX):
+%       - rotate the series by 90deg with newstack.
+% 3) Pre-process the tilt-series:
+%       - a) ifft(fft(img)*nyquist)
+%       - b) median filter; kernel=3 if pixel>2 else 2
+%       - c) bandpass * fft(img); LOW_RES_CUTOFF=800, RESOLUTION_CUTOFF=autoAli_max_resolution
+%       - d) resample img with the image rotation
+% 4) autoAlign:
+%       - a) for each binnning[binHigh:binInc:binLow]: (binInc = ceil((binHigh - binLow) / 3) ) AND for each iteration with this binning[autoAli_iterations_per_bin]:
+%               - If first iteration, run tiltxcorr using the resampled tilt-series, without patch mode, just global.
+%               - If >1 iteration, combine transformation (img rota + last iteration), apply them with newstack, run tiltxcorr in patch mode to get the fiducials and use them for tiltalign. TiltOption 0
+%                   autoAli_n_iters_no_rotation is setting the number of iteration before activating the local alignments for tiltalign.
+% 5) If rotate 90, rotate again but this time on the real .fixed (before it was preprocessed for alignment in tmp)
+
+% 6) If refine on beads, for [15:-2:5]:
+%       - apply last transformation with newstack, reconstruct with tilt(thick=3000), findbeads3d, reproject with tilt (.erase), imodtrans to set .erase relative to the original series,
+%         then beadtrack to have a first estimate
+%       - refine the bead positions with fitBeads:
+%           - a) calculate the avg beads, center and standardize. Apply R-weight in Fourier space to keep low frequencies away (look at the edges!) before taking the average.
+%           - b) Fit gaussian mixture (3 components) to this average and use this model 
+%           - c) reconstruct this reference bead, pad to img size, and CC with img_derivative (R-weighted).
+%           - d) go the original position of the beads, get tile, apply peakMask and update coords using the COM of the tile.
+%       - Finally, run tiltalign using this current fiducial model. if (nBeads < 5) then return. if (nBeads < 11), no local alignment. TiltOption 5 and LocalTiltOption 0.
+%
+% OR
+%
+% 7) If no refine on beads: apply the final transformation to with newstack at bin 15. Then reconstruct with tilt at thickness 3000, then findbeads3d and reproject with tilt again.
+%    The is used to get the .erase and _3dfind.ali.
+%       

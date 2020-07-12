@@ -1,0 +1,82 @@
+\section{Workflow} \label{sec:workflow}
+
+\input{Figures_Tables/04_workflow}
+
+You will often find that it is much easier to organize every {\emClarity} calls into one script. This script has two main purposes. First, it keeps track of the jobs that have been run (you can also find this information into the \code{logFile} directory). This is often useful to visualize the global picture and it might help you to remember how you got your final reconstruction. Second, it is a script, so you can use it directly to run {\emClarity}, making the workflow much simpler.
+
+In the case of this tutorial, here is one example of such script. To make things easier, each jobs has its own parameter file. This is just an example and you can modify the number of cycles and which sampling to use, the angular searches, the number of tilt-series refinement and the number of classification, etc.
+
+% inputx
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily]
+#!/bin/bash
+
+# Simple function to stop on *most* errors
+check_error() {
+    sleep 2
+    if tail -n 30 ./logFile/emClarity.logfile |\
+       grep -q "Error in emClarity" ; then
+	    echo "Critical error found. Stopping the script."
+	    exit
+    else
+	    echo "No error detected. Continue."
+    fi
+}
+
+# Change binning with tomoCPR
+run_transition_tomoCPR() {
+    emClarity removeDuplicates param${i}.m ${i}; check_error
+    emClarity tomoCPR param${i}.m ${i}; check_error
+    emClarity ctf update param$((${i}+1)).m; check_error
+    emClarity ctf 3d param$((${i}+1)).m; check_error
+}
+
+# Basic alignment cycle
+run_avg_and_align() {
+    emClarity avg param${i}.m ${i} RawAlignment; check_error
+	emClarity alignRaw param${i}.m ${i}; check_error
+}
+
+# autoAlign
+# ctf estimate
+# templateSearch
+
+# Create metadata and reconstruct the tomograms
+emClarity init param0.m; check_error
+emClarity ctf 3d param0.m; check_error
+
+# First reconstruction - check if that looks OK.
+emClarity avg param00.m 0 RawAlignment; check_error
+emClarity alignRaw param0.m 0; check_error
+
+# Bin 3
+for i in 1 2 3 4; do run_avg_and_align; done
+
+# Run tomoCPR at bin3 using cycle 4 and then switch to bin2
+run_transition_tomoCPR
+
+# Bin 2
+for i in 5 6 7 8 9; do run_avg_and_align; done
+
+# Run tomoCPR at bin2 using cycle 9 and then switch to bin1
+run_transition_tomoCPR
+
+# Bin 1
+for i in 10 11 12 13 14; do run_avg_and_align; done
+
+
+# Last cycle: merge the datasets
+emClarity avg param15.m 15 RawAlignment; check_error
+emClarity avg param15.m 15 FinalAlignment; check_error
+emClarity reconstruct param15.m 15;
+\end{lstlisting}
+
+This example doesn't have a classification, but as explained in section \ref{sec:classification}, classifications are encapsulated in their own cycles, so you can run them anytime you want between two cycles.
+
+In our experience, it is usually good practice to keep a close eye on how the half-maps and FSC evolves throughout the workflow, specially before deciding to change the sampling. Moreover, as mentioned in Figure \ref{fig:emClarity_workflow}, the tilt-series refinement in completely optional and you can simply change the binning by running \code{ctf 3d}, as opposed to \code{run\_transition\_tomoCPR}.
+
+The following sections of the tutorial will give you more details on the command, on the parameters you need to run them and on the generated outputs.
+
+Finally, if everything is set correctly and once the picking is done, you can technically run this script and wait for {\emClarity} to output the final reconstruction. If you are new with {\emClarity}, we do recommend you to run the commands manually, at least for the first few cycles, in order to get a better grasp of the software.
+
+\begin{tip}It is best practice to work the whole way through the workflow with the smallest data-set as possible and once you checked that everything holds, then process your full data. The same approach may be taken with this tutorial; it should be possible to obtain a low-resolution but recognizable 70S ribosome with only two or three of the tilt-series. This will confirm that everything ``runs'' (producing some output) in your hands and on your gear. Only after this it does make sense to then confirm you are able to produce the correct output, i.e. a 5.9\si{\angstrom} map.
+\end{tip}

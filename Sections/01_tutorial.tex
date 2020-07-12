@@ -1,0 +1,44 @@
+\section{How to use this guide} \label{sec:tutorial}
+
+\subsection{Run the jobs}
+
+Our main objective in writing this tutorial is to help you get started using {\emClarity} for processing sub-tomogram data as quickly as possible. To begin, we will not introduce all of the methods that {\emClarity} puts at your disposal, instead focusing on core features and concepts. If at any point you are confused, or something seems to not work as you expect, you might find more information on the  \href{https://github.com/bHimes/emClarity/wiki}{wiki}; feel free to also search the mailing list archive, or post new questions to the community forum, hosted on \href{https://groups.google.com/forum/#!forum/emclarity}{google groups}, should you have any questions you cannot resolve on your own.
+
+\begin{tip}To display every procedure available, run \code{emClarity help} from the command line.
+\end{tip}
+
+\subsection{Algorithms}
+
+The {\emClarity} source code is available on \href{https://github.com/bHimes/emClarity/tree/LTS_version_1_5_0}{github}, and we encourage you to go through the code to look at the algorithms directly. Because {\emClarity} is frequently being updated, this can be a great way to see what's going on behind the scenes.
+
+Section \ref{sec:algo} contains descriptions of the algorithms for each section presented in this tutorial. Please keep in mind that these are simplified descriptions of what {\emClarity} is actually doing, as we often don't mention the details that were implemented to make the code more efficient.
+
+\subsection{Installation and Requirements}
+
+This tutorial will not talk about the \href{https://github.com/bHimes/emClarity/wiki/Installation}{installation process} nor the software and hardware \href{https://github.com/bHimes/emClarity/wiki/Requirements}{requirements}. If you are looking for this, you can find more information on the \href{https://github.com/bHimes/emClarity/wiki}{wiki}.
+
+% We might want to add a section about installation though. I've heard it is not that easy for some people, specially for large clusters. Also for installing the MCR locally, and cuda I realize it probably isn't trivial
+
+\subsection{Parameter files}
+
+{\emClarity} is currently using a parameter file to manage inputs. You can find an example \href{https://github.com/bHimes/emClarity/blob/master/docs/exampleParametersAndRunScript/param0.m}{here}.
+
+\subsection{System parameters}
+
+% Parameters for autoAlign
+\begin{longtable}[l]{| l || p{123mm} |}
+\captionsetup{labelfont=bf}
+\caption[GPU and CPU parameters]{GPU and CPU parameters. Your parameter files should have the following parameters.\\ \textcolor{myred}{\textbf{*}} indicates the required parameters.} \label{tab:system_param}\\
+
+\hline
+
+-- \code{nGPUs}\textcolor{myred}{\textbf{*}} & The number of visible GPUs. {\emClarity} will try to use them in parallel as much as possible. If this number doesn't correspond to the actual number of GPUs available, {\emClarity} will ask you to either adjust this number to match the number of GPUs, or modify the environment variable \code{CUDA\_VISIBLE\_DEVICE} to make some GPUs invisible to {\MATLAB}.\\
+
+-- \code{nCpuCores}\textcolor{myred}{\textbf{*}} & The maximum number of processes to run simultaneously. In most {\emClarity} programs, the number of processes launched in parallel on a single GPU is equal to \code{nCpuCores}$/$\code{nGPUs}. If your devices run out of memory, it is likely that you will have to decrease the number of processes per device, thus decreasing this parameter.\\
+
+- \code{fastScratchDisk}\textcolor{myred}{\textbf{*}} & Path of the optional temporary cache directory, used by \code{ctf 3d} and \code{tomoCPR}. This directory is only temporary and is moved back inside the project directory at the end of the execution. We recommend setting this to the fastest storage you have available. If left empty, \code{ctf 3d} and \code{tomoCPR} will use directly the project cache directory (c.f. \code{<projectDir>/cache} from section \ref{sec:project_directory}).\\
+
+\hline
+\end{longtable}
+
+% I don't mention them in the rest of the tutorial, because in my experience, I set them at the beginning of the project, find the best nCpus and change them only between binnings (and except in rare cases with mem issues during classification). Usually the closer I get from bin1, the smaller nCpus should be. Anyway that something that is more technical and I don't want them mixed with the other parameters.

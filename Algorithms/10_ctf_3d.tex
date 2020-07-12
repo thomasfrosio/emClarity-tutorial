@@ -1,0 +1,156 @@
+\subsection{Tomogram reconstruction} \label{sec:algo:ctf_3d}
+
+%%%%% Workflow
+
+%% Parameters:
+% applyExposureFilter (default=1)
+% useSurfaceFit (default=1)
+% flgDampenAliasedFrequencies (default=0)
+% flg2dCTF (default=0): force to 1 section equal to maxZ
+
+% Ali_samplingRate
+% PIXEL_SIZE
+
+\subsubsection{Resample the tilt-series} \label{sec:algo:ctf_3d:resample}
+
+For efficiency and practicality, we often start working with ``binned'' data and progressively decrease the ``binning'', up to the point where the original data is used. Binning consists into reducing images by an integer multiple to ensure that every output pixel is an average of the same number of neighbouring pixels (the ``bin''). There are many ways to bin an image: \href{https://www.imagemagick.org/Usage/filter/#box}{box filter}, \href{https://entropymine.com/imageworsener/pixelmixing/}{pixel mixing}, Fourier cropping, interpolation, etc. Currently, {\emClarity} bins the tilt-series by resampling them in a new, smaller, coordinate grid (in Fourier space), using bilinear interpolation.
+
+Therefore, the original aligned tilt-series, saved in \code{aliStacks} and registered in the metadata during the project initialization (section \ref{sec:init}), are resampled, in parallel, as follow:
+\begin{enumerate}
+    \item TODO: $1/{\mathrm{sinc}(gX)}^2$.
+    % This should just be a note.
+    % This is a real problem. Fourier crop should just work.
+    % resample2d is updated, so update this.
+
+    \item The projections are Fourier transformed and band-pass filtered. Low frequencies are removed up to $\sim$600\si{\angstrom}, which sets the mean of the projections to 0 and attenuates eventual large intensity gradients present in the images. Frequencies after the new binned pixel size $\bm{p}_{bin}$ are also removed.  $\bm{p}_{bin}$ is equal to \code{PIXEL\_SIZE} $\times$ \code{Ali\_mSamplingRate}.
+
+    \item When resizing images, we force the output image to fit into a new grid. This operation ultimately defines a new center in pixel space and it is important to keep this new center aligned with the center of the original image, so that any operation done on the binned data can be scaled back to the original data. Depending on the binning factor and image size, we can anticipate and shift the images before scaling, to keep the new center aligned with the original grid.
+
+    \item The projection spectra are scaled by $\bm{p}_{bin}$ using bilinear interpolation and the inverse Fourier transform is calculated to switch the images back to real space. Remember that scaling the frequency spectrum of an image by $n$ is equivalent to scaling the image by $1/n$.
+
+    \item At this point, the images are ``zoomed out``, but the actual size of the images are unchanged. To complete the process of resizing the image, we need to crop them to the desired binned size.
+\end{enumerate}
+
+The binned stacks are saved in the \code{cache} directory as \code{<prefix>\_<ali1>\_bin<nb>.fixed}.
+
+% 3) Check that the reconstruction at this binning doesn't exist already. If every subregions from one stack are already reconstructed, then skip it.
+
+\subsubsection{Defocus step} \label{sec:algo:ctf_3d:defocus_step}
+
+Defocus-gradient corrected back-projection, as described in \cite{jensen_3dctf}, requires that ``during the reconstruction of tomogram by [weighted] back-projection, each voxel is calculated from tilted images that were CTF-corrected with defocus values corresponding to the position of that voxel at each tilt. To achieve this, each image in the tilt-series is CTF-corrected multiple times with different defocus value. The number of different CTF corrections performed per image depends upon how finely the defocus gradient should be sampled'' \cite{novaCTF}.
+
+\begin{note}During tilt-series alignment, the tilt axis is aligned to the $y$ axis. As such, if we assume that the specimen is flat, the defocus only varies along the $x$ and $z$ axis.
+\end{note}
+
+In practice, the tomograms are divided into $s$ $z$-sections of equal width, also referred as $z$-slabs or simply sections. Each section is assigned to a CTF-corrected tilt-series with a defocus corresponding to the defocus at the center of the section. The sampling of the defocus gradient, set by the defocus step $\bm{\Delta \mathrm{z}}$, is defined to keep the average CTF amplitudes, resulting from the destructive interference between all of the CTFs within a section, above the current resolution target. It is calculated as follow:
+\begin{enumerate}
+    \item The specimen thickness $\bm{t}$ is defined by the $z_{min}$ and $z_{max}$ boundaries of the sub-regions of the current tilt-series. The sub-regions are defined manually, as described in section \ref{sec:subregions}.
+    
+    \item The goal of this procedure is to progressively decrease $\bm{\Delta \mathrm{z}}$, up to the point where the $z$ sampling is fine enough to achieve the resolution target. $\bm{\Delta \mathrm{z}}$ is initially set to the specimen thickness $\bm{t}$. First, we calculate a theoretical CTF for each $z$ point defined from $-{\bm{\Delta \mathrm{z}}}/2$ to ${\bm{\Delta \mathrm{z}}}/2$, with $0.1 \times \bm{\Delta \mathrm{z}}$ increment, and average all of these CTFs together. This gives us an estimate of the average CTF resulting from the interference of many CTFs along a $z$ section. The defocus estimate used to calculate the CTFs is the average of the defoci calculated in section \ref{sec:algo:defocus_estimate:per_view_defocus} and stored in table \ref{tab:ctf_tlt}.
+
+    \item Using this average CTF, we can estimate the maximum resolution $\bm{h}_{max}$, in 1/\si{\angstrom}, that a subtomogram could achieve if we were to use the current $\bm{\Delta \mathrm{z}}$. $\bm{h}_{max}$ corresponds to the highest frequency, up to Nyquist, where the average CTF is above 90\% of contrast.
+    %The reason why we take the highest frequency and not the first frequency where the CTF first goes below 90\% of contrast is bc a very wide range of defocus will be represented in the subtomograms due to the tilt, so the sampling function will be smoother without reaching 0... NOT SURE ABOUT THIS.
+
+    \item We define the resolution target as $\bm{h}_{cut}/2$, where $\bm{h}_{cut}$ is the frequency cutoff, in 1/\si{\angstrom}, defined in equation \ref{eq:hcut}. If it is the first cycle and the half-maps are not reconstructed yet, $\bm{h}_{cut}$ is set to 40\si{\angstrom}. If $\bm{h}_{max} \geqslant \bm{h}_{cut}/2$, it indicates that the defocus gradient is probably sampled enough to achieve the resolution target. On the other hand, if $\bm{h}_{max} < \bm{h}_{cut}/2$, it indicates that we are likely to benefit from a finer sampling, i.e. a smaller $\bm{\Delta \mathrm{z}}$. In this case, we decrease the current $\bm{\Delta \mathrm{z}}$ by 90\% and recalculate the average CTF and $\bm{h}_{max}$. This procedure is repeated until $\bm{h}_{max} \geqslant \bm{h}_{cut}$, up to the minimum allowed value $\bm{\Delta \mathrm{z}} = 10$ nm.
+    \begin{note}Since we expect the resolution to improve using this new reconstruction, the resolution of the new reconstruction must be higher than what we currently have. The value $\bm{h}_{cut}/2$ roughly balances the trade off between achievable resolution and run time during the reconstruction.
+    \end{note}
+    
+    \begin{note}If $\bm{h}_{max} \geqslant \bm{h}_{cut}$ at the first iteration, when $\bm{\Delta \mathrm{z}}$ is equal to the specimen thickness $\bm{t}$, the CTF correction shouldn't be considered really as ``3D'' as we will only use one $z$ section. On the other hand, it also means that, given the resolution target, the specimen is thin enough to not likely benefit from a ``3D'' correction.
+    \end{note}
+\end{enumerate}
+
+Once the defocus step $\bm{\Delta \mathrm{z}}$ and thickness of the specimen $\bm{t}$ are calculated, we can define the number $s$ of $z$-sections, as the closest odd integer from $\bm{t}\ /\ \bm{\Delta \mathrm{z}}$.
+
+% \subsubsection{Z sections}
+
+% Once $\Delta f$ and $T$ are calculated, we can define the number of z sections needed as the closest odd integer from $T\ /\ \Delta f$. A z section, simply referred as section, is nothing more than a z slab of the tomogram with a width equal to $\Delta f$. Each section will be reconstructed independently from the other sections.
+
+% Therefore, for each section, we are going to calculate one tilt-series that will be CTF-corrected using the section's defocus offset. Then, for each sub-region, we reconstruct each section independently using their respective tilt-series. Once the sections are calculated, we concatenate them to form the final 3D-CTF corrected sub-region tomograms. The ability to reconstruct only subsets of a bigger field-of-view heavily relies on the \code{SLICE}, \code{THICKNESS} and \code{SHIFT} parameters of the {\tilt} program.
+
+% Before calculating the CTF-corrected tilt-series for each section of the specimen, we can calculate the spatial model of each section, which will make the CTF-correction more accurate.
+
+\subsubsection{Center-of-mass and spatial model} \label{sec:algo:ctf_3d:spatial_model}
+
+The CTF estimate, fitted from the power spectra, is considered to be the sum of CTFs from weak phase objects at varying defoci within the field of view. The center-of-mass of the specimen in $z$, $\bm{\mathrm{COM}}_z$, where most of the signal comes from, greatly impacts this average CTF, to the point where we can assume that the defocus estimate is the distance from $\bm{\mathrm{COM}}_z$ to the focal plane. The $z$-sections are positioned relative to the center of the reconstruction, $\bm{\mathrm{COR}}_z$, therefore to calculate their respective defocus and correctly estimate their average CTF, we must adjust the current defocus estimate to match the center of the reconstruction $\bm{\mathrm{COR}}_z$. In conclusion, we need to know the defocus at the center of the specimen or in other words, the average $z$-offset $\bm{\bar{Z}}_{R\text{-}M} = \bm{\mathrm{COR}}_z - \bm{\mathrm{COM}}_z$.
+
+Here, we make the assumption that most of the signal comes from the particles, therefore that the defocus estimate is the distance from the center-of-mass of all the subtomograms to the focal plane. As the particle positions are expressed relative to $\bm{\mathrm{COR}}_z$ (i.e. $z=0$ at the center of the reconstruction), it becomes very easy to calculate $\bm{\bar{Z}}_{R\text{-}M}$. Moreover, as we know which particle belongs to which section, we can calculate an offset for each section $s$. We refer to these offsets as ${[\bm{\bar{Z}}_{R\text{-}M}]}_{s}$.
+
+Of course, the particles within a section are not necessarily into the same $z$ plane, meaning that ${[\bm{Z}_{R\text{-}M}]}_s$ varies with the $x$ and $y$ coordinates. To take this into account, we calculate a spatial model describing the $z$-positions of the particles across the specimen. To do so, we extract the $x,\ y,\ z$ coordinates of the particles of every sub-regions of the specimen and, according to their $z$-position, the particles are assigned to a section. If a section contains more than 6 particles, we fit a quadratic surface to the particle positions. This surface defines the ``spatial model'' of the section or in other words ${[\bm{Z}_{R\text{-}M}]}_s(x,y)$. If there is less than 6 particles, the spatial model is an horizontal plane (it is the average $z$-position of the particles and is invariant across the section, i.e. ${[\bm{\bar{Z}}_{R\text{-}M}]}_s$).
+
+% NOTE: Take the coordinates of every valid particle, bin the coordinates, recenter the coordinates (tilt-axis=0; shift from lower left to centered and include the tomo Z offset from the microscope frame) and add the Z coordinates of the particles. Do this for every sub-region in the current stack.
+
+\subsubsection{3D-CTF phase correction} \label{sec:algo:ctf_3d:ctf_phase_correction}
+
+%%%% Calculate the CTF phase corrected (multiply by CTF and exposure filter) tilt-series.
+For each section $s$, we are going to calculate one CTF-corrected tilt-series using the section's defocus offset. Therefore, for each section $s$ and for each view of the tilt-series $i$:
+% As we have said previously, we need to calculate a CTF-corrected tilt-series for each section:
+
+\begin{enumerate}
+    \item \textbf{Exposure filter}: Calculate the Fourier transform of the view and multiply it with the exposure filter ${[\bm{W}_{exposure}]}_i$, as in \cite{exposure_grant_2015}. This filter only varies with the tilt angle of the image and therefore is identical for each section.
+    \begin{note}To take into account that the tilt-series, and therefore the subtomograms, are exposure filtered, the same filter will be applied to the sampling functions of the particles in section \myref{sec:algo:avg:SF3D}.
+    \end{note}
+    
+    \item \textbf{Microscope frame}: The view is replaced within the microscope frame. To do so, the spatial model ${[\bm{Z}_{R\text{-}M}]}_s(x,y)$ is tilted according to the tilt angle of the current image. As described previously, because it is calculated from the $z$-positions of the particles, the spatial model of the section is already correctly positioned in $z$.
+    
+    \item \textbf{Defocus ramp}: The microscope frame is then divided into $n$ $z$-slabs of $\bm{\Delta \mathrm{z}}$ width, which effectively divides the view (represented by the transformed spatial model ${[\bm{Z}_{R\text{-}M}]}_{s,i}$) into $n$ strips parallel to the tilt-axis. This is similar to figure 1.A.right, from \cite{novaCTF} and forms a defocus ramp perpendicular to the tilt-axis. The strips follow a defocus ramp, defined as follow:
+    \begin{equation} \label{eq:def_ramp}
+        \bm{\mathrm{z}}_{i} + {z'}_{min} - \bm{\Delta \mathrm{z}}
+                                  \xrightarrow[up\ to]{+\bm{\Delta \mathrm{z}}}\
+                                  \bm{\mathrm{z}}_{i} + {z'}_{max} + \bm{\Delta \mathrm{z}}
+    \end{equation}
+    where ${z'}_{min}$ and ${z'}_{max}$ are the highest and lowest $z$ coordinates of the transformed (i.e tilted) spatial model. $\bm{\mathrm{z}}_{i}$ is the defocus value of the current view, saved in table \ref{tab:ctf_tlt}.
+    
+    \begin{note}As the spatial model is not necessarily a plane, the strips can be ``curved'' (i.e. with a variable width along the tilt-axis).
+    \end{note}
+    
+    \begin{note}For a 0\textdegree\ image, $\bm{\mathrm{z}}'_{max} + \bm{\mathrm{z}}'_{min} \leqslant \bm{\Delta \mathrm{z}}$, because the spatial model only takes into consideration the particles from within a $z$-section. In other words, the 0\textdegree \ spatial model ``fits'' into the central slab of $\bm{\Delta \mathrm{z}}$ width and therefore has only one strip. On the other hand, as the tilt-angle increases, more strip are necessary to fully cover the spatial model.
+    \end{note}
+    
+    \item \textbf{CTF multiplication}: At this point, the spatial model is correctly positioned in the microscope frame and divided into $n$ strips. An array is allocated in memory to hold the final CTF-corrected view and it is progressively filled, one strip at a time. For each strip $n$:
+    \begin{enumerate}
+        \item We calculate the 2D CTF of the current strip. The astigmatic defocus of the strip depends on the spatial model and therefore contains the $z$-offset of the strip, the $z$-offset of the section and the $z$-offset to take into account that $\bm{\Delta \mathrm{z}}$ is the defocus at the center-of-mass of the specimen and not at the center of the reconstruction.
+
+        \item A copy of the Fourier transform of the current image is multiplied by this 2D CTF and inverse Fourier transformed. The pixels that belongs to the current strip are extracted from this CTF-multiplied image and added to the pre-allocated output array.
+        
+        \begin{note}Adjacent strips can slightly overlap by 1 pixels. The values of these pixels are divided by 2 to eliminate this overlapping artefact. 
+        \end{note}
+    \end{enumerate}
+    
+    \item \textbf{Save the CTF-corrected stacks}: Once every images of the tilt-series are reconstructed, the stack of CTF-corrected images is temporarily saved in the \code{cache} directory.
+\end{enumerate}
+
+At this point of the procedure, we have calculated one CTF-corrected tilt-series for each $z$-section of the specimen.
+
+% FOR EACH SECTION:
+% 1) assume the defocus determined is the distance from the center of mass of subtomograms in Z to the focal plane, rather than the center of mass of the tomograms (specimen): add avgZ to the defocus (defocus offset). This is only done if the section hasn't a surfaceFit. If it does, the surfaceFit already has the offset.
+
+% FOR EACH PROJECTION
+% 1) pad projection to optimum FFT size.
+% 2) Compute and apply the exposure filter.
+% 3) Compute the mesh grids for X and Y. For the Z, use the surfaceFIT, otherwise zeros (flat).
+% 4) Transform the specimen plane to take into account the tilt angle. The tZ is multiplied by pixel_size (meter opposed to pixel) and is shifted by the defocus value (which contains the defocus offset).
+% 5) Extract the defocus ramp (min tZ, max tZ).
+% 6) Using the same defocus step, define the strips: minDefocus-ctf3dDepth/1:ctf3dDepth/1:maxDefocus+ctf3dDepth/1.
+%    For each strip:
+%       - allocate correctedPrj zeros().
+%       - compute the vector defocus of the strip (defocus_strip) and compute the CTF.
+%       - multiply the entire projection with the CTF, save as tmpCorrection.
+%       - define the strip mask: (tZ > defocus_strip - ctf3dDepth/2 & tZ <= defocus_strip + ctf3dDepth/2) which defines the region of the transformed image that belongs to the strip. The strips are not linear if the sample is not planar.
+%       - Add tmpCorrection(mask) to correctedPrj.
+%   We also make sure that if the strip overlap (rounding error, surface fit...), we'll take the mean value for these pixels sampled multiple times (usually max 2, it is at the edges of the strips).
+
+% Save the corrected stack (multiplied by CTF and exposure filtered).
+
+\subsubsection{Tomogram reconstructions} \label{sec:algo:ctf_3d:reconstruction}
+
+For each sub-region, we reconstruct each $z$-section of the sub-region tomogram independently, using their respective CTF-corrected tilt-series. Once the $z$-sections are reconstructed, we concatenate them to form the final 3D-CTF corrected sub-region tomograms.
+For each $z$-section $s$ of a given specimen:
+\begin{enumerate}
+    \item For each sub-region defined for this specimen, we reconstruct with {\tilt} the current section using the section's 3D-CTF corrected tilt-series. The tilt angles saved in table \ref{tab:ctf_tlt} are used for the \code{-TILTFILE} entry. If there is a \code{.local} file for this specimen, it will be assigned to the \code{-LOCALFILE} entry. The cosine stretching is turned-off (\code{-COSINTERP 0}), with no low-pass filtering \code{-RADIAL 0.5,0.05}.
+    \begin{note}The ability to reconstruct only subsets of a bigger volume heavily relies on the \code{SLICE}, \code{THICKNESS} and \code{SHIFT} entries of the {\tilt} program.
+    \end{note}
+
+    \item The output reconstructions from {\tilt} are oriented with the $y$ axis in the third dimension. With \href{https://bio3d.colorado.edu/imod/doc/man/trimvol.html}{trimvol} \code{-rx} entry, we rotate by -90\textdegree\ around $x$ to place the $z$ axis in the third dimension.
+\end{enumerate}
+
+Once all the sections of each sub-region are reconstructed, the $z$-sections of the same sub-region are stacked together in $z$ with \href{https://bio3d.colorado.edu/imod/doc/man/newstack.html}{newstack} to create the final 3D-CTF corrected sub-region tomograms.

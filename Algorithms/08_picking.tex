@@ -1,0 +1,101 @@
+\subsection{Template matching} \label{sec:algo:picking}
+
+\subsubsection{Pre-processing the tomogram}
+
+%% RESAMPLE THE TILT-SERIES
+% 1) extract every tilt and sub-region from the metadata.
+% 2) If the binned stacks do not exist, bin the aligned stacks, in series.
+%       - get the header of the aliStack
+%       - calculate the new pixel size and dimensions
+%       - multiply each projection with 1/sinc(gX)^2: amplify the corners
+%       - bandpass: highcut: 600, lowcut: binned pixel size
+%       - resample image in Fourier space (rotation + eventual shifts to keep the center the same) and cut the final image (in real space). Save them in cache/
+%       - do this for every stack.
+
+The desired sub-region tomogram $\bm{V}$ is reconstructed by weighted back-projection using {\tilt}.
+ \begin{enumerate}
+    \item \textbf{Get the aligned stack}: The aligned stack saved in \code{aliStacks} is loaded and binned to the desired sampling (i.e. \code{Tmp\_sampling}) as described in section \ref{sec:algo:ctf_3d:resample}. If the stack already exists in \code{cache}, it is not recalculated.
+    
+    \item \textbf{Reconstruct the subregion tomogram}: The sub-region coordinates are extracted from table \ref{tab:recon_coords} and used to set the {\tilt} entries \code{SLICE}, \code{THICKNESS} and \code{SHIFT}. The tilt angles saved in table \ref{tab:ctf_tlt} are used for the \code{-TILTFILE} entry. If there are local alignments, the \code{.local} file is used for the \code{-LOCALFILE} entry. The output reconstructions from {\tilt} are oriented with the $y$ axis in the third dimension. With \href{https://bio3d.colorado.edu/imod/doc/man/trimvol.html}{trimvol} \code{-rx} entry, we rotate by -90\textdegree\ around $x$ to place the $z$ axis in the third dimension.
+    \begin{note}This step is a simpler version of the reconstruction described in section \myref{sec:algo:ctf_3d}.\end{note}
+\end{enumerate}
+
+If the sub-region is larger than \code{Tmp\_targetSize}, it is divided into $c$ equal chunks. For each chunk $c$:
+\begin{enumerate}
+    \item \textbf{Band-pass filter}: The chunk $\bm{V}_c$ is band-pass filtered by $\bm{W}_{bandpass}$, which has a high-pass cutoff at 600\si{\angstrom} to remove ice/intensity gradients and a low-pass cutoff a \code{lowResCut} or if it is not defined a cutoff at the first CTF zero. The zero is estimated based on the average defocus value of the stack (table \ref{tab:ctf_tlt}). The chunk is then centered and standardized.
+    \begin{note}If \code{Tmp\_medianFilter} is defined, the chunk $\bm{V}_c$ is median filtered using the specified neighborhood window.\end{note}
+    
+    \item \textbf{Positive contrast}: The chunk is low-pass filtered and we assume that \code{lowResCut} cuts before the first zero of the CTF. As such, the negative contrast is ``flipped'' in real-space by simply multiplying the chunk by $-1$.
+\end{enumerate}
+Finally, the variance of $\bm{V}$ is calculated and used to normalize each chunk $\bm{V}_c$.
+
+\subsubsection{Pre-processing the template}
+The template $\bm{S}$ is loaded, padded up to $2\times\code{Ali\_mRadius}$ while enforcing a squared box. It is then centered, standardized and finally resampled to \code{Tmp\_sampling}, using linear interpolation.
+
+\subsubsection{Angular search}
+% Computing the cross-correlation (CC) between the tomogram and the template gives us a CC map. Each pixel of this map corresponds to the CC score between the template and the tomogram centered on this pixel. If we sample different rotations, how do we keep track of CC scores? After all, the CC scores do not tell us what was the rotation of the template.
+
+The in- and out-of-plane angles $[\Theta_{out},\ \Delta_{out}, \Theta_{in},\ \Delta_{in}]$ registered in \code{Tmp\_angleSearch} are converted into a set of $r \times 3$ Euler angles ($\phi_{r},\ \theta_{r},\ \psi_{r}$). These rotations are finally converted into $r$ rotation matrices $\bm{R_{r}}$.
+
+To keep track of things, two empty volumes of the same size as the chunks are prepared, for each chunk. $\bm{\mathrm{CC}}_{best\text{-}peak}$ will store the standardized cross-correlation scores and $\bm{\mathrm{CC}}_{best\text{-}rot}$ will store the index $r$.
+
+For each chunk $c$ and for each rotation $r$:
+\begin{enumerate}
+    \item \textbf{Rotate and pad the template}: The template is rotated by $\bm{R}_{r}$, padded to the size of $\bm{V}_c$, band-pass filtered with $\bm{W}_{bandpass}$ and any change in power due to interpolation is corrected. We refer to this transformed template as $\bm{S}_r$.
+    
+    \item \textbf{Calculate the normalized cross-correlation}: The cross-correlation between the tomogram chunk $\bm{V}_c$ and the rotated template $\bm{S}_r$ is calculated as follow.
+    \begin{equation}
+        \bm{\mathrm{CC}}_{c,r} =    \mathcal{F}^{-1} \left\{
+                                        \mathcal{F} \left\{ \bm{V}_c \right\} \overline{\mathcal{F} \left\{ \bm{S}_r \right\}}
+                                    \right\}
+    \end{equation}
+    Importantly, $\bm{\mathrm{CC}}_{c,r}$ is then normalized by its standard deviation. % add more detail on this.
+    
+    \item \textbf{Update the best score}: We only want to save the best peaks, i.e. the peaks that are higher than the previous iterations. As such, each voxel $v$ of ${[\bm{\mathrm{CC}}_{best\text{-}peak}]}_c$ and ${[\bm{\mathrm{CC}}_{best\text{-}rot}]}_c$ are updated as follow:
+    \begin{equation}
+        {[\bm{\mathrm{CC}}_{best\text{-}peak}(v)]}_c =
+            \begin{cases}
+                \bm{\mathrm{CC}}_{c,r}(v), & \text{if}\ {[\bm{\mathrm{CC}}_{best\text{-}peak}]}_c(v) \leqslant  \bm{\mathrm{CC}}_{c,r}(v)\\
+                {[\bm{\mathrm{CC}}_{best\text{-}peak}]}_c(v), & \text{otherwise}
+            \end{cases}
+    \end{equation}
+    \begin{equation}
+        {[\bm{\mathrm{CC}}_{best\text{-}rot}]}_c(v) =
+            \begin{cases}
+                r, & \text{if}\ {[\bm{\mathrm{CC}}_{best\text{-}peak}]}_c(v) \leqslant \bm{\mathrm{CC}}_{c,r}(v)\\
+                {[\bm{\mathrm{CC}}_{best\text{-}rot}]}_c(v), & \text{otherwise}
+            \end{cases}
+    \end{equation}
+    Consequently, each voxel $v$ is assigned to the current best CC score and to the rotation $r$ that gave this score.
+    \begin{note}Of course, if it is the first iteration, i.e. if $r=1$, then ${[\bm{\mathrm{CC}}_{best\text{-}peak}]}_c = \bm{\mathrm{CC}}_{c,r}$ and ${[\bm{\mathrm{CC}}_{best\text{-}rot}]}_c = 1$.
+    \end{note}
+\end{enumerate}
+    
+At the end of the angular search, the chunks are concatenated and the following files are saved in \code{convmap\_wedgeType\_2\_bin<X>} (\code{<X>} is equal to \code{Tmp\_sampling}):
+\begin{itemize}
+    \item \code{<prefix>\_<region>\_bin<X>\_convmap.mrc}: The best scores, i.e. $\bm{\mathrm{CC}}_{best\text{-}peak}$.
+    \item \code{<prefix>\_<region>\_bin<X>\_angles.mrc}: The corresponding rotation $r$ for each best score, i.e. $\bm{\mathrm{CC}}_{best\text{-}rot}$.
+    \item \code{<prefix>\_<region>\_bin<X>\_angles.list}: The $(\phi,\ \theta,\ \psi)$ Euler angles corresponding to the rotation $r$. One trio per line, $r$ lines.
+\end{itemize}
+
+\subsubsection{Extract the peaks} \label{sec:algo:picking:extract_peaks}
+
+The goal now is to select the $x,\ y,\ z$ coordinates of the $p$ strongest peaks registered $\bm{\mathrm{CC}}_{best\text{-}peak}$, with $p$ equal to \code{Tmp\_threshold}. Then, for each peak, the corresponding rotation $r$ is extracted from $\bm{\mathrm{CC}}_{best\text{-}rot}$ and converted back to the corresponding $(\phi,\ \theta,\ \psi)$ Euler angles. Therefore, for each desired peak $p$:
+\begin{enumerate}
+    \item \textbf{Get the coordinates}: The $x,\ y,\ z$ coordinates ${[\bm{T}_{x,y,z}]}_p$ of the strongest peak registered in $\bm{\mathrm{CC}}_{best\text{-}peak}$ are selected. To take into account the neighbouring pixels, these coordinates are adjusted by the local center of mass ($3\times3\times3$ matrix, centered on the strongest peak). ${[\bm{T}_{x,y,z}]}_p$ is relative to the subregion tomogram $\bm{V}$, with the origin at the lower left corner and is unbinned.
+    % mouais...
+    
+    \item \textbf{Get the rotation}: The value of $\bm{\mathrm{CC}}_{best\text{-}rot}$ at the coordinates ${[\bm{T}_{x,y,z}]}_p$ is extracted. This value is the rotation index $r$ and is converted back to the corresponding $(\phi_p,\ \theta_p,\ \psi_p)$ Euler angles and rotation matrix $\bm{R}_p$. If a symmetry was entered, the rotation is randomized between the symmetry related pairs to reduce missing-wedge bias.
+    
+    \item \textbf{Get the CC score}: The value of the peak in $\bm{\mathrm{CC}}_{best\text{-}peak}$ at position ${[\bm{T}_{x,y,z}]}_p$ is extracted, centered and standardized. This score is referred as $\bm{\mathrm{CC}}_p$.
+        
+    \item \textbf{Erase the selected peak}: The selected peak at position ${[\bm{T}_{x,y,z}]}_p$ and its neighbouring voxels are masked-out by $\bm{M}_{peak}$. $\bm{M}_{peak}$ is set by \code{Peak\_mType} and \code{particleRadius} (or \code{Peak\_mRadius} if it is defined), and is rotated by $\bm{R}_p$ before being applied. In that way, the next iteration cannot select the same peak nor the peaks within this particle radius.
+
+    \item \textbf{Save the peak information in table \ref{tab:csv}}.
+\end{enumerate}
+Finally, the coordinates $\bm{T}_{x,y,z}$ are binned to \code{Tmp\_sampling} and saved into \code{<prefix>\_<region>\_bin<X>.pos} and converted into an IMOD mod file with the following command:
+\begin{lstlisting}
+point2model -number 1 -sphere 3 -scat *.pos  *.mod
+\end{lstlisting}
+
+\input{Figures_Tables/08_csv}

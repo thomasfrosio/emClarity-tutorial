@@ -1,0 +1,350 @@
+\subsection{Subtomogram averaging} \label{sec:algo:avg}
+
+% NOTE for Ben: This part is finished and can be reviewed.
+
+For each half-set, this procedure computes the CTF-corrected filtered subtomogram average $\bm{S}$, via a volume normalized single-particle Wiener (SPW) filter \cite{volume_normalized_SPW}. The goal of this filter is to minimize the reconstruction error of the particle density. Each Fourier coefficient $(q_{hkl})$ of the unfiltered reconstruction $\bm{S}_{raw}$ is modulated as follow, to produce the 3D-CTF amplitude corrected filtered reconstruction, $\bm{S}$.
+
+\begin{equation} \label{eq:wiener_filter}
+    \bm{S}({q}_{hkl}) = 
+        \mathcal{F}^{-1} \left\{ 
+            \dfrac{ \mathcal{F} \left\{ \bm{S}_{raw} \right\}({q}_{hkl}) }{ \bm{W}_{thres}^{2}({q}_{hkl}) + {1}\ /\ {\bm{\mathrm{SNR}}({q}_{hkl})} }\ \bm{W}_{ad\text{-}hoc}({q}_{hkl})
+        \right\}
+\end{equation}
+where:
+\begin{itemize}
+    % Sampling function
+    \item $\bm{W}_{thres}$ is the total thresholded sampling function, i.e. the sampling function of the reference, calculated in section \ref{sec:algo:avg:subtomo_avg}.
+
+    % SNR
+    \item $\bm{\mathrm{SNR}}$ is the spectral Signal-to-Noise ratio estimate of $\bm{S}_{raw}$. It is defined as follow:
+    \begin{equation} \label{eq:psnr}
+    \begin{tikzpicture}[baseline=(g1.base),level/.style={},decoration={brace,mirror,amplitude=7}]
+
+        \node (g1) {$\bm{\mathrm{SNR}}(q_{hkl}) =$};
+
+        \node (g2) [right of=g1, xshift=2.3cm] {$\left(\dfrac{ 2\ \bm{\mathrm{FSC}}_{{\nabla}cut}(q_{hkl}) }{ 1-\bm{\mathrm{FSC}}_{{\nabla}cut}(q_{hkl}) }\right)$};
+
+        \node (g3) [right of=g2, xshift=2.9cm] {$\left(\dfrac{1}{\mathrm{G} \otimes \bm{W}_{thres}^{2}(q_{hkl})} \right)$};
+    
+        % Annotations
+        \draw [decorate] ($(g2.west)+(0.2,-0.6)$) --node[below=2.1mm]{$(1)$} ($(g2.east)+(-0.2,-0.6)$);
+        % \draw [decorate] ($(g3.west)+(0.2,-0.6)$) --node[below=2mm]{$(2)$} ($(g3.east)+(-0.2,-0.6)$);
+        \draw [decorate] ($(g3.west)+(0.2,-0.6)$) --node[below=2.1mm]{$(2)$} ($(g3.east)+(-0.2,-0.6)$);
+    \end{tikzpicture}
+    \end{equation}
+    where:
+    \begin{itemize}
+        \item $(1)$ defines the map interpretability (i.e. the signal to noise ratio) found in the unfiltered data, including the noise found in the solvent region. As discussed in \cite{rosenthal_2003}, it is equal to the square of cosine of the average phase error and is equivalent to the square of the figure-of-merit (FOM) used in X-ray crystallography. It is described from section \ref{sec:algo:avg:molecular_mask} to \ref{sec:algo:avg:fom}.
+        \item $(2)$ is a Gaussian smoothed version of the total sampling function. The FOM assumes that the number of Fourier measurements is homogeneous. This condition is not met with non-homogeneously spread subtomogram defoci and with strongly preferred orientations in the data set. To correct for these cases, each Fourier component of the FOM is weighted by the sum of squared CTF values (i.e. $\bm{W}_{thres}^{2}(\bm{q}_{hkl})$), which can be considered as the \textit{effective} number of Fourier measurements.
+        % I am not sure about this explanation. I think it is because the FSCs are calculated on the CTF-corrected volumes (S_raw / W), but the SNR is meant to be applied, via the Wiener filter, on the raw (not CTF-corrected) volumes. So we have to multiply it by W. (S_raw * W / W = S_raw). Both explanations may be correct actually...
+    \end{itemize}
+
+    \item $\bm{W}_{ad\text{-}hoc}$ is an ad-hoc filter described in \ref{sec:algo:avg:wiener}. It contains the B-factor sharpening and the Modulation Transfer Function (MTF) of the detector.
+\end{itemize}
+
+\subsubsection{Mask and box size} \label{sec:algo:avg:box}
+
+Originally calculated from the desired mask size (\code{Ali\_mRadius} and \code{Ali\_mType}), the box size also includes additional voxels to account for the mask roll-off, the padding factor and an eventual additional padding to optimize the final box size to Fourier transforms.
+
+\subsubsection{Sampling functions} \label{sec:algo:avg:SF3D}
+
+The 3D-sampling function (i.e. a weighted 3D-CTF model \cite{bharat_2015}) describes the extent of information transfer during the imaging process. It is supposed to track all of the systematic changes to the signal imposed by the microscope and image processing algorithms. As such, it should take into account the CTF modulations for each subtomogram in each image of the tilt-series, while accounting for the increasing sample thickness with tilt angle and the accumulated electron dose. Moreover, it should account for any filtering applied to the tilt-series or weighting applied during tomogram reconstruction.
+
+{\emClarity} is currently calculating a simplified model of the sampling function of the particles, referred as $\bm{w}$, but a per-particle model, including every weights applied during the back-projection, will be added in the future. The current model groups particles from the same tilt-series by dividing the field of view into strips parallel to the tilt-axis. The number of strips, also referred as group, can be changed by the \code{ctfGroupNumber} parameter and is set by default to 9. During initialization (section \ref{sec:init}), each particle is assigned to the group it belongs to, thus, to a given sampling function $\bm{w}$. Although particles from a given group have the same $\bm{w}$, their contribution to the total sampling function $\bm{W}$, i.e. the sampling function of the reference, is different, because they have different orientations in the tomogram.
+
+When reconstructing an image, the microscope multiplies the spectrum of the object by the CTF. Before the tomogram reconstruction, we multiplied again the images by the CTF to correct for the negative contrast (phase correction). At this point, the spectrum of the tomogram is multiplied by the square of CTF. Therefore, to correct for the CTF amplitudes, we will need to divide the reconstruction spectrum by CTF squared. As such, we calculate directly the square of the sampling functions, $\bm{w}^2$.
+
+In conclusion, {\emClarity} first needs to calculate the sampling function $\bm{w}^2$ of the particles. To do so, a 3D super-sampled spectrum is filled with $i$ CTFs, once for each view $i$ of the tilt-series. Briefly, for each tilt-series $t$, for each group $g$ and for each view $i$:
+
+\begin{enumerate}
+    \item \textbf{Get the CTF}: Assuming the tilt-axis is parallel to the $y$ axis and assuming that the defocus is a positive number, we can calculate the defocus value at the center of the strip $g$, such as:
+    \begin{equation}
+        \bm{\mathrm{z}}_{t,g,i} = \bm{\mathrm{z}}_{t,i} - x_{g}\tan(\bm{\alpha}_{t,i})
+    \end{equation}
+    where $\bm{\mathrm{z}}_{t,i}$ is the defocus value calculated in section \ref{sec:algo:defocus_estimate:per_view_defocus}. $x_{g}$ is the center of the group $g$ in the $x$ direction. The $x$ coordinates are centered, meaning that $x=0$ at the tilt-axis. $\bm{\alpha}_{t,i}$ is the tilt-angle. Note that the further away in $x$ the group is from the tilt-axis, the more the defocus varies with the tilt-angle. We can then calculate the 2D CTF ${[\bm{w}^2]}_{t,g,i}$, as in equation \ref{eq:ctf2}, using this defocus value, the defocus astigmatic shift $\bm{\Delta \mathrm{z}}_{t,i}$ and the astigmatic angle $\bm{\phi}_{t,i}$, both calculated in section \ref{sec:algo:defocus_estimate:per_view_defocus}.
+
+    \item \textbf{$\bm{z}$-stretch}: To take into account the thickness of the view, ${[\bm{w}^2]}_{t,g,i}$ is stretched in $z$, thus becoming a volume of 9 slices, with the total weight along the slices kept to 1.
+
+    \item \textbf{Weighting}: The stretched ${[\bm{w}^2]}_{t,g,i}$ is ``fraction'' filtered in the same way the corresponding view $i$ in the tilt-series was. Indeed, during the alignment of the tilt-series (section \ref{sec:algo:defocus_estimate:transform}), we kept track of the inelastic scattering events by multiplying each view of the tilt-series by its fraction of inelastic ${[\bm{f}_{inelastic}]}_{t,i}$ (equation \ref{eq:f_inelatic}). As such, ${[\bm{w}^2]}_{t,g,i}$ is also multiplied by its ${[\bm{f}_{inelastic}]}_{t,i}$ and similarly by the fraction of dose, if a Saxton dose-scheme was used. Additionally, an exposure filter ${[\bm{W}_{exposure}]}_{t,i}$ was applied to the tilt-series before the tomogram reconstruction (section \ref{sec:algo:ctf_3d:ctf_phase_correction}) and is therefore applied to ${[\bm{w}^2]}_{t,g,i}$ as well.
+
+    \item \textbf{From 2D to 3D}: The $z$-stretched and weighted ${[\bm{w}^2]}_{t,g,i}$ is then rotated by its corresponding tilt-angle $\bm{\alpha}_{t,i}$, using linear interpolation, and is added to the pre-allocated 3D spectrum $\bm{w}_{t,g}^2$. Once every ``view'' $i$ has been added, $\bm{w}_{t,g}^2$ is finally normalized between 0 and 1.
+    \begin{note}By replacing the CTFs in the 3D space, the sampling functions ultimately include the so-called ``missing-wedge''.\end{note}
+    % Each view of exposure filter is rotated as well and placed into another 3D spectrum, referred as $E_{i}$. To normalise each frequency of the $S_{i}$ between 0 and 1, it is finally divided by $E_{i}$.
+    % This is not clear...
+\end{enumerate}
+
+As such, for each tilt-series $t$, we calculate $g$ sampling functions, all of which are saved into the same montage \code{<projectDir>/cache/<prefix>\_<bin>.wgt}. These functions are in the microscope frame and will be rotated into the reference frame to calculate the total sampling function $\bm{W}^2$.
+
+\subsubsection{Subtomogram average and total sampling function} \label{sec:algo:avg:subtomo_avg}
+
+This step produces the two ${[\bm{S}_{raw}]}_1$ and ${[\bm{S}_{raw}]}_2$, i.e the two subtomogram average, and the two ${[\bm{W}_{thres}]}_1$ and ${[\bm{W}_{thres}]}_2$, i.e. the two total sampling functions, from equation \ref{eq:wiener_filter}. This entire section is repeated for each one of the two half-set.
+
+We first pre-allocate in memory $\bm{S}_{raw}$ and $\bm{W}^2$. The following steps consist into filling these empty volumes with every transformed subtomogram and every $\bm{w}^2$ weight, respectively. For each sub-regions registered into the metadata during \code{init}, we extract the sub-region coordinates, the particles information ($x,\ y,\ z$ coordinates and rotation) and for each particle $p$:
+\begin{enumerate}
+    \item \textbf{Particle extraction}: The subtomogram $\bm{s}_{p}$ is extracted from its sub-region tomogram. There are a few things worth to mention:
+    \begin{enumerate}
+        \item If a particle, defined by \code{particleRadius}, is out of the boundaries of its sub-region, it is ignored and will be ignore in the following cycles. The box size is often much larger than the particle, to ensure that all of the delocalized information is available for full CTF restoration. Ideally, this is fully represented in every particle, but as long as the particle itself is in the sub-region, we do not worry if the high resolution information is not there and extract the particle nonetheless.
+        \item The subtomogram coordinates are floats and are likely to have decimals. To preserve the center of the particle, we take the nearest integers to extract the box from the sub-region tomogram and the remaining rounded decimals (i.e. shifts) ${[\bm{T}_{orig}]}_p$ will be applied during the subtomogram transformation, at the next step.
+        % we actually floor() and not round() if I remember correctly.
+    \end{enumerate}
+    \item \textbf{Get the particle in the reference frame}: Once extracted, the particle $\bm{s}_{p}$ is rotated into the reference frame, shifted by their ${[\bm{T}_{orig}]}_p$ shift resulting from the extraction and the symmetry is applied, if any. Each symmetry pair is calculated and averaged with the other ones to produce the symmetrized rotated particle.
+
+    \item \textbf{Get the sampling function in the reference frame}: The same rotation is applied to the sampling function $\bm{w}_{p}^2$ to correctly represent the original sampling of the subtomogram.
+
+    \item \textbf{CCC Weighting}: If $\bm{s}_{p}$ has an alignment score $\bm{\mathrm{CCC}}_{p}$ below the average score of the entire data-set, $\overline{\bm{\mathrm{CCC}}}$, both of $\bm{s}_{p}$ and $\bm{w}_{p}^2$ $q_{hkl}$ Fourier coefficients are down-weighted by the following filter:
+    \begin{gather}
+        \Delta \bm{\mathrm{CCC}}_{p} = \cos^{-1}(\bm{\mathrm{CCC}}_{p}) - \cos^{-1}(\overline{\bm{\mathrm{CCC}}})\notag\\
+        {[\bm{w}_{\mathrm{CCC}}]}_p(q_{hkl}) = \exp \left({ -\left(\code{flgQualityWeight} \times \Delta \bm{\mathrm{CCC}}_{p}\right)^2 q_{hkl}^2 }\right)
+    \end{gather}
+    The further away the particle is from the mean, the stronger the filter. It mostly affects high frequencies. This feature is deactivated for the first cycle as it requires CCC scores, which are calculated during the subtomogram alignment procedure (section \ref{sec:align}).
+
+    \item \textbf{Build the reference}: Now that both $\bm{s}_{p}$ and $\bm{w}_{p}^2$ are in the reference frame, we can add them to the pre-allocated volumes $\bm{S}_{raw}$ and $\bm{W}_{p}^2$, respectively. There are a few things worth to mention:
+    \begin{itemize}
+        % I am not mentioning the experimental Bfactor based on defocus.
+
+        \item The particle $\bm{s}_{p}$ is centered and standardized before being added to the reference. The corners of the box, which can contain non-sampled regions, are also ignored.
+
+        \item Particles with an alignment score below \code{flgCCCcutoff} are ignored. By default, \code{flgCCCcutoff} is 0 (i.e. no particle ignored).
+
+        \item If \code{flgCutOutVolumes} is 1, the transformed (rotated + shifted) particles are saved to disk in the \code{cache} directory. Before being saved, the subtomograms are padded by 20 pixels.
+    \end{itemize}
+\end{enumerate}
+
+The reconstruction $\bm{S}_{raw}$ is centered, standardized and saved in the project directory as \code{cycleXXX\_<project>\_class0\_REF\_*\_NoWgt.mrc}.
+
+As we will discussed in the next sections, our PSNR estimate directly comes from the Fourier Shell Correlation (FSC), making it less reliable for critically under-sampled frequencies. We can use the total sampling function $\bm{W}^2$, which weights the PSNR, to correct for this effect. To do so, frequencies below a given threshold are up-weighted, which effectively will down-weight these frequencies in the final reconstruction $\bm{S}$. This ``thresholded'' sampling function is referred as $\bm{W}_{thres}^2$ and it is calculated as follow:
+\begin{enumerate}
+    \item {\emClarity} defines critically under-sampled frequencies as the frequencies that have a weight less than $0.2 \times \mathrm{median}(\bm{W}^2)$, excluding frequencies with a value of 0 from the calculation of the median.
+    \item The new sampling value of the frequencies below the threshold was defined empirically and is equal to:
+\begin{lstlisting}
+low = 0.1 * max(W2);
+threshold = 1.5 * median(W2(W2 > low) - low);
+\end{lstlisting}
+    \item Frequencies at the ``edge'' of critically under-sampled regions are slightly up-weighted too, to create a smooth transition between this new threshold value and the rest of the sampling function.
+    \item This total thresholded sampling function $\bm{W}_{thres}^2$ is saved in the project directory as \code{cycleXXX\_<project>\_class0\_REF\_*\_Wgt.mrc}.
+\end{enumerate}
+
+We now have calculated the raw subtomogram average $\bm{S}_{raw}$ and the total sampling function $\bm{W}_{thres}^2$, of equation \ref{eq:wiener_filter}. As such, we can already correct for all of the systematic changes in $\bm{S}_{raw}$ imposed by the microscope and image processing algorithms, such as:
+\begin{equation}
+    \bm{S}_{corr} = \mathcal{F}^{-1} \left\{ \frac{ \mathcal{F} \{ \bm{S}_{raw} \} }{ \bm{W}_{thres}^2 } \right\}
+\end{equation}
+This correction does not take the SNR of the reconstructions into account and even if the total sampling function is thresholded, the noise present in $\bm{S}_{raw}$ is amplified in $\bm{S}_{corr}$. The objective of the next few sections consists into finding the best SNR estimate of the $\bm{S}_{corr}$ half-maps and apply a new correction that does take the SNR into account.
+
+\subsubsection{Molecular masks} \label{sec:algo:avg:molecular_mask}
+
+The SNR can be most accurately estimated from a ``masked'' FSC, calculated from the two $\bm{S}_{corr}$ half-maps, where the environs solvent noise is suppressed with soft-edged masks. To avoid introducing spurious correlations between half-sets, two masks are created, one for each half-map, as described below:
+\begin{enumerate}
+    \item The CTF-corrected reconstruction, $\bm{S}_{corr}$, is median filtered to remove ``salt and pepper'' noise and low-pass filtered to 14\si{\angstrom}. The volume is centered and standardized, and the edges of the reconstruction are forced to smoothly go to zero to suppress edge artifacts.
+    \item The highest intensity voxels are then selected and used as seeds for an iterative dilation. The dilation progressively dilates the seeds toward their neighbour voxels that are above a gradually relaxed intensity threshold. This procedure ensure a connectivity-based expansion.
+    \item The binary mask formed by the selected voxels after dilation, $\bm{M}_{bin}$, is Gaussian blurred and saved as $\bm{M}_{core}$. This mask is considered as the particle volume (non-hydrated), leaving only the strongest part of the densities.
+    \item Additionally, $\bm{M}_{bin}$ is radially expanded by at least 10\si{\angstrom}, Gaussian blurred and saved as $\bm{M}_{mol}$. At this point, the $\bm{M}_{mol}$ mask includes the particle density \emph{and} its surrounding solvent to make sure flexible densities are correctly included in the FSC calculation, thereby preventing overestimation of the resolution.
+    \item As we'll see, the two $\bm{S}_{corr}$ spectra are masked by their corresponding $\bm{M}_{mol}$ mask before computing the FSC. As such, we will need to ``scale'' the FSC to compensate for the masked-out voxels and the solvent content. The ratio $\bm{f}_{mask} / \bm{f}_{particle}$ does exactly that and is applied to the FSC at the next section, in equation \ref{eq:scale_FSC}.
+    \begin{itemize}
+        \item $\bm{f}_{mask}$ is the fractional volume allowed by the $\bm{M}_{mol}$ mask.
+        \item $\bm{f}_{particle}$ is the fractional volume occupied by the particle within the box size. It is the volume allowed by the $\bm{M}_{bin}$ mask.
+        \item As $\bm{M}_{mol}$ is a soft-edged mask and therefore contains values between 0 and 1, and even though the edges almost certainly contain surrounding solvent, we estimate the signal reduction in the soft-edged regions of the mask as they could cut through actual densities. This power reduction is implicitly included in $\bm{f}_{particle}$.
+    \end{itemize}
+    As we produce two $\bm{f}_{mask} / \bm{f}_{particle}$ ratio (one for each $\bm{S}_{corr}$), we take the average of both ratio.
+\end{enumerate}
+
+\subsubsection{Fourier Shell Correlation} \label{sec:algo:avg:fsc}
+
+Before calculating the FSC between the two half-maps ${[\bm{S}_{corr}]}_1$ and ${[\bm{S}_{corr}]}_2$, we need to pre-process them:
+\begin{enumerate}
+    \item The \code{Ali\_mType} and \code{Ali\_mRadius} parameters are used to compute soft-edged shape mask, $\bm{M}_{shape}$. In order to constrain the analysis to the desired region, this mask is applied to the molecular masks $\bm{M}_{core}$ and $\bm{M}_{mol}$. The soft-edged part of $\bm{M}_{shape}$ (i.e. the taper) is randomized to reduce the correlation due to the masking during FSC calculation. 
+    
+    \item The reconstructions need to be aligned to each other. To do so, {\emClarity} uses the ``Fit in map'' procedure of {\Chimera}. As we want to base the alignment on the core of the particle, the averages are temporally masked with $\bm{M}_{core}$ before calling {\Chimera}. The two masked volumes are saved as \code{FSC/cycleXXX\_<prefix>\_Raw-*Ali.mrc}, then {\emClarity} extracts the output rotation $\bm{R}_{gold}$ and translation $\bm{T}_{gold}$, and use them to align ${[\bm{S}_{corr}]}_1$ to ${[\bm{S}_{corr}]}_2$, using spline interpolation.
+    
+    \item The two reconstructions are centered, standardized, and masked with their respective $\bm{M}_{mol}$ mask. Both reconstructions are saved as \code{FSC/fscTmp\_1\_noFilt\_*.mrc}. These volumes are padded to a cube of at least 384 voxels of length, to oversample their Fourier spectrum before the FSC calculation.
+\end{enumerate}
+
+Once the reconstructions are aligned and masked, we can calculate the spherical FSC:
+\begin{enumerate}
+    \item The two aligned and masked volumes are Fourier transformed and the cross-correlation spectrum is calculated:
+    \begin{equation}  \label{eq:fsc_cc}
+        \bm{\mathrm{CC}}(q_{hkl}) = \mathcal{F} \left\{ {[\bm{S}_{corr}]}_1 \right\} (q_{hkl})\ \overline{ \mathcal{F} \left\{ {[\bm{S}_{corr}]}_2 \right\} }(q_{hkl})
+    \end{equation}
+    where $\bar{x}$ is the conjugate of $x$.
+    \item Each axis is divided into shells. The number of shells depends on the size of the Fourier spectrum. As the reconstructions are cubic, each shell is an empty spherical mask with a given thickness and delimits the set of $\bm{\mathrm{CC}}$ scores that will be averaged together. The final FSC curve is nothing more than the concatenation of the normalized $\bm{\mathrm{CC}}$ scores, such as:
+    \begin{equation} \label{eq:fsc}
+        \bm{\mathrm{FSC}}(shell) = \frac{ \sum\limits_{q=h',k',l'}^{Q'} \bm{\mathrm{CC}}(q_{h'k'l'}) }{ 
+                                          \sqrt{ \sum\limits_{q=h',k',l'}^{Q'} {|\mathcal{F} \left\{ {[\bm{S}_{corr}]}_1 \right\}|}^2 \times
+                                                 \sum\limits_{q=h',k',l'}^{Q'} {|\mathcal{F}\left\{ {[\bm{S}_{corr}]}_2 \right\}|}^2 } }
+    \end{equation}
+    where the $q_{h'k'l'}$ frequencies are the $q_{hkl}$ frequencies that belongs to the given shell. $\bm{Q}'$ is the number of $q_{h'k'l'}$ frequencies within each shell. The numerator is the cross-correlation score of the shell. The denominator is the ``power'' of the shell or in other words, the total complex magnitude of the shell. $|x|$ is the complex magnitude of the complex number $x = a+bi$, such as $|x| = \sqrt{a^2 + b^2}$. Note that $|\bar{x}| = |x|$.
+\end{enumerate}
+
+Moreover, we can calculate the FSC over conical shells, as opposed to spherical shells, making the SNR estimate via the FSC much more robust to resolution anisotropy \cite{conical_fsc}. To do so, {\emClarity} subdivide each spherical shell into 37 overlapping cones of 36\textdegree\ of half angle, with a 30\textdegree\ increment between each cone. Then, it recalculates the FSC as described above, but for each cone. We refer to these FSCs as $\bm{\mathrm{FSC}}_{\nabla}$, where as opposed to equation \ref{eq:fsc}, the normalized cross-correlation is calculated over the $q_{h''k''l''}$ frequencies, which are the frequencies within the current shell \emph{and} within the current cone. Similarly, $\bm{Q}''$ is the number of $q_{h''k''l''}$ frequencies within each shell of each cone.
+
+Then, the spherical FSC, as well as the 37 conical FSCs, needs to be scaled by $\bm{f}_{mask}$ and $\bm{f}_{particle}$. Indeed, as discussed in section \ref{sec:algo:avg:molecular_mask}, these FSCs are calculated from masked volumes, where the object of interest represents only a fraction of the reconstruction. As such, each shell, whether spherical or conical, of each FSC, is scaled as follow. This scaling is applied up to the first shell that shows no correlation between the two half-maps (i.e. $\bm{\mathrm{FSC}}(shell)\leqslant0$).
+\begin{equation} \label{eq:scale_FSC}
+    \bm{\mathrm{FSC}}(shell) = \dfrac{ \bm{\mathrm{FSC}}(shell) \times (\bm{f}_{particle}/\bm{f}_{mask})}{1 + (1 - \bm{f}_{particle}/\bm{f}_{mask}) \times |\bm{\mathrm{FSC}}(shell)|}
+\end{equation}
+
+So far, the FSCs have been a function of shells, i.e $\bm{\mathrm{FSC}}(shell)$. This is also true for $\bm{Q}'$ and $\bm{Q}''$, which can be expressed as a function of spherical or conical shells, respectively. The next sections of this chapter are using an oversampled version of these curves. The oversampled curves are calculated using spline interpolation over 501 $h$ frequency points.
+
+\subsubsection{Frequency cutoffs}  \label{sec:algo:avg:res_cutoffs}
+
+The FSC directly impacts our SNR estimate, thereby our filtering. Defining a FSC threshold level at which the resolution is reproducible is therefore necessary. The one-bit and half-bit information curves indicate the resolution level at which enough information has been collected for interpretation and will be used to define the frequency cutoffs for filtering the reference.
+
+The one-bit and half-bit curves, $\bm{T}_{1\text{-}bit}$ and $\bm{T}_{1/2\text{-}bit}$ respectively, are calculated for the spherical FSC and each of the conical FSCs, as in \cite{fsc_mvh}:
+\begin{equation} \label{eq:n_effective}
+    \bm{Q}_{e}(h) = \bm{Q}(h)\ /\ (2 \times U)
+\end{equation}
+\begin{equation}
+    \bm{T}_{1\text{-}bit}(h) = \dfrac{ 0.5 + 2.4142\ / \sqrt{\bm{Q}_{e}(h)} } { 1.5 + 1.4142\ / \sqrt{\bm{Q}_{e}(h)} }
+\end{equation}
+\begin{equation}
+    \bm{T}_{1/2\text{-}bit}(h) = \dfrac{ 0.2077 + 1.9102\ / \sqrt{\bm{Q}_{e}(h)} } { 1.2071 + 0.9102\ / \sqrt{\bm{Q}_{e}(h)} }
+\end{equation}
+
+As discussed in \cite{fsc_mvh}, the FSC is influenced with various factors, notably the number of voxels $\bm{Q}$ in a given Fourier shell, the number of repeated unit $U$ in the reconstruction and the size of the particle, all of which are taken into account in $\bm{Q}_{e}$ (equation \ref{eq:n_effective}). Of course, for the spherical FSC, $\bm{Q}$ corresponds to $\bm{Q'}$, whereas for the conical FSCs, it corresponds to their respective $\bm{Q''}$.
+
+For each conical FSCs, we then define a frequency cutoff $\bm{h}_{cut}$, where $\bm{h}_{1\text{-}bit}$ and $\bm{h}_{1/2\text{-}bit}$ are the frequencies at which the FSC first goes below the $\bm{T}_{1\text{-}bit}$ or $\bm{T}_{1/2\text{-}bit}$ curves, respectively.
+\begin{equation} \label{eq:hcut}
+    \bm{h}_{cut} = (\bm{h}_{1\text{-}bit} - \bm{h}_{1/2\text{-}bit}) / 2
+\end{equation}
+
+The frequency cutoff is also calculated for the spherical FSC, as well as the fixed-valued threshold $\bm{h}_{0.5}$ and $\bm{h}_{0.143}$. These last two are only used for display and are saved in \code{FSC/cycleXXX\_<project>\_Raw-1-fsc\_GLD.pdf} or in the corresponding \code{.txt} file.
+
+\subsubsection{Figure-Of-Merit} \label{sec:algo:avg:fom}
+
+As discussed in \cite{rosenthal_2003}, the figure-of-merit (FOM) in equation \ref{eq:psnr}, also referred as $\bm{C}_{ref}$, defines the resolution criterion that will be used by the Wiener filter as SNR estimate. It is worth noting that ``$\bm{C}_{ref}$ is equal to the cosine of the average phase error and is equivalent to the crystallographic figure-of-merit, a common measure of map interpretability in X-ray crystallography'' \cite{rosenthal_2003}. $\bm{C}_{ref}$ is defined as follow:
+\begin{equation} \label{eq:cref}
+    \bm{C}_{ref}(h) = \sqrt{\dfrac{2\ \bm{\mathrm{FSC}}(h)}{1+\bm{\mathrm{FSC}}(h)}}
+\end{equation}
+
+To be used by the Wiener filter, $\bm{C}_{ref}$ needs to be expressed as a function of $q_{hkl}$ frequencies, i.e. it needs to be a volume of the same size as the spectrum about to be filtered. Additionally, $\bm{C}_{ref}$ should be limited by the frequency cutoffs computed in the previous section.
+
+\begin{enumerate}
+    \item Each one of the 37 conical $\bm{\mathrm{FSC}}_{\nabla}$ are multiplied with their corresponding frequency cutoff curve. These curves are equal to 1 (no weighting), up to their frequency cutoff $\bm{h}_{cut}$ where an exponential decay starts and forces the FSC to rapidly drop to zero. The cut-offed conical FSCs are referred as $\bm{\mathrm{FSC}}_{\nabla cut}$.
+    % gaussian roll-off vs exponential decay... don't know.
+
+    \item To express $\bm{C}_{ref}$ as a function of $q_{hkl}$ frequencies, {\emClarity} computes the ``anisotropic 3D FSC''. To do so, the 37 overlapping and oversampled conical $\bm{\mathrm{FSC}}_{\nabla cut}$ are reshaped and expanded back into their corresponding cone in the 3D space, while taking into account that frequencies overlapped with multiple cones are appropriately down-scaled.
+\end{enumerate}
+
+Once $\bm{\mathrm{FSC}}_{\nabla cut}(q_{hkl})$ is calculated, we can define $\bm{C}_{ref}(q_{hkl})$ as shown below. In practice, as with the total sampling function, we calculate directly $\bm{C}_{ref}^2$.
+\begin{equation} \label{eq:cref3d}
+    \bm{C}_{ref}(q_{hkl}) = \sqrt{\frac{ 2\ \bm{\mathrm{FSC}}_{\nabla cut}(q_{hkl}) }{ 1 + \bm{\mathrm{FSC}}_{\nabla cut}(q_{hkl}) }}
+\end{equation}
+
+\subsubsection{Volume-normalized SPA Wiener filter} \label{sec:algo:avg:wiener}
+
+At this point, we have described every component of equation \ref{eq:wiener_filter}, expect the $\bm{W}_{ad\text{-}hoc}$ weighting function. This function should be thought as an external component of the Wiener filter; it is just an additional ad-hoc filtering that we apply on the final volume. $\bm{W}_{ad\text{-}hoc}$ contains two components, the global B-factor sharpening and the default Modulation Transfer Function (MTF) of the detector.
+\begin{equation}
+    \bm{B}_{factor}(q_{hkl}) = \exp\left( \frac{ \code{Fsc\_bfactor} \times q_{hkl}^{2} }{4} \right)
+\end{equation}
+\begin{equation} \label{eq:mtf}
+    \bm{\mathrm{MTF}}(q_{hkl}) = \frac{0.13}{ \exp \left( -20\ q_{hkl}^{1.25} \right) + 0.13 }
+\end{equation}
+
+In equation \ref{eq:wiener_filter}, we clearly show that we divide each Fourier coefficient by some weight, which depends on the sampling and on our SNR estimate. As we have now seen, the SNR estimate is calculated using the CTF-corrected $\bm{S}_{corr}$ half-maps. Here's a reformulation of equation \ref{eq:wiener_filter} with $\bm{S}_{corr}$, as opposed to $\bm{S}_{raw}$:
+\begin{equation} \label{eq:wiener_filter2}
+    \bm{\mathrm{S}}({q}_{hkl}) = 
+        \mathcal{F}^{-1} \left\{ 
+            \dfrac{ { \bm{W}_{thres}({q}_{hkl}) }^2 }{ { \bm{W}_{thres}({q}_{hkl}) }^2 + {1}\ /\ {\bm{\mathrm{SNR}}({q}_{hkl})} }\ \mathcal{F} \left\{ \bm{S}_{corr} \right\}\!({q}_{hkl})\ \bm{W}_{ad\text{-}hoc}({q}_{hkl})
+        \right\}
+\end{equation}
+
+% adHocMTF = 1 / (exp(-20 * q^1.25) + 0.13) / 0.13)
+% bF = exp(bFactor * x^2 / 4)
+% >> adHocMTF * bF * forceMaskAli
+
+% WEIGHT
+% FOM = 2 * anisoFSC / (1-anisoFSC)
+% weight = bFactor.* 1/(wgt + (1/(snrWeight * FOM) .* avgCTF ) .* nyquistLimit;
+% weight * REF.
+
+
+
+%%%%%%%%%%%% END
+
+
+%%%%% WORKFLOW:
+% CTF CORRECTION: load the REF, threshold SF3D and divide by it.
+% MASKS:
+%   1) Prepare randomized shape masks (VOLMASK) and nyquist lowpass (BANDPASSFILT).
+%   2) Compute the FSC masks (SHAPEMASK and PV) and particle fraction as well (take the mean).
+%      Both masks are multiplied by the randomized shape mask VOLMASK.
+% ALIGN VOLUMES:
+%   1) Apply the randomized PV to the REFs and save to disk for chimera BUT don't modify REFs.
+%   2) Fit both map with chimera (rotation+shift). Apply the transformation (spline) to align the REFs. REF1 is modified here.
+
+% PREPARE VOLUME
+%   1) Apply BANDPASSFILT, SHAPEMASK *and* VOLMASK to REF and set mean and variance. Save to REF_FILT.
+%   2) REF_FILT are saved  as fscTmp_*_EVE/ODD.mrc.
+
+%%%%%%%%%%%%%%%%
+%% RANDOM FSC
+%%   1) Calculate FSC cutoff (make the cutoff between two shells).
+%%      The lowcut is about 1/(3*currentResForDefocusError) - ~nyquist.
+%%   2) Randomize the phases of both REF after the cutoff and pad to at least 384. Save to REF_RAND.
+%%      At this point, REF is not masked.
+%%   3) Apply PV to REF_RAND
+%%   4) Calculate fft of REF_RAND and calculate the FSC (only spherical): FSC_RAND.
+%% NORMAL FSC
+%%   1) Set mean, variance and apply SHAPEMASK to REF. REF are modified here.
+%%   2) Save REF to fscTmp_*_noFilt_EVE/ODD.mrc.
+%%   3) Pad REF to at least 384 and calculate the conical FSC: FSC_NORMAL. REF are modified here (padding).
+%% TIGHT FSC
+%%   1) Calculate fft of PV*REF and calculate the conimal FSC: FSC_TIGHT. REF are NOT modified here.
+%%   2) Fit a curve to FSC_TIGHT: FSC_TIGHT_FIT
+%%%%%%%%%%%%%%%%
+
+% SCALE FSC_NORMAL
+%   1) Scale the FSC_NORMAL up to the first 0. The scaling is: (f_particle * FSC_NORMAL) / (1 + (f_particle-1) * abs(FSC_NORMAL)).
+% FITTING FSCs
+%   1) Fit a curve: FSC_NORMAL_FIT.
+%   2) Do the same but with the FSC_NORMAL_NUM: FSC_NORMAL_NUM_FIT.
+
+%%%%%%%%%%%%%%%%
+%% RANDOM FSC
+%%   1) Fit curve to FSC_RAND: FSC_RAND_FIT.
+%%   2) FSC_TRUE = FSC_TIGHT_FIT up to cutoff, then subtract* FSC_RAND_FIT to FSC_TIGHT_FIT.
+%%      Actually, (FSC_TIGHT_FIT - FSC_RAND_FIT) / (1-FSC_RAND_FIT)
+%%      Everything is oversampled to 501 points.
+%%   3) Save PV to *-particleVolEst_*.mrc and SHAPEMASK to *-shapeMask_*.mrc
+%%%%%%%%%%%%%%%%
+
+% FSC CUTOFFS
+%   1) Compute the curves
+%      ONEBIT = (0.5 + 2.4142 / sqrt(nEffective)) / (1.5 + 1.4142 / sqrt(nEffective));
+%      HALFBIT = (0.2077 + 1.9102 / sqrt(nEffective)) / (1.2071 + 0.9102 / sqrt(nEffective));
+%      with nEffective = FSC_NORMAL_NUM_FIT * (3/2 * DbyL)^2 / (2*SYMMETRY); FSC_NORMAL_NUM_FIT is oversampled to 501 points. DbyL=2/3
+%      ALIBIT = mean(ONEBIT, HALFBIT).
+%   2) Compute the cutoffs
+%      ONEBIT_CUT  = find(FSC_NORMAL_FIT - ALIBIT < 0  & osX > 1/100, 1, 'first');
+%      HALFBIT_CUT = find(FSC_NORMAL_FIT - HALFBIT < 0 & osX > 1/100, 1, 'first');
+%      GLD_CUT     = find(FSC_NORMAL_FIT <= 0.143      & osX > 1/100, 1, 'first');
+%      If not found, set the cuts to first frequency where pixelSize > 0.425.
+%      This is done for every cone too.
+%   3) FORCEMASK: Set this to 1 up to HALFBIT_CUT and then exp(-0.005^-2 * (osX-osX(HALFBIT_CUT).^2);
+%      For the spherical, use HALFBIT_CUT, for the cones, use GLD_CUT.
+%      Basically a curve that starts to decrease as the HALFBIT_CUT, up to 0.
+%   4) FORCEMASK_ALI: Same thing, but start to decrease at ONEBIT_CUT.
+
+% cREF/FOM
+%   1) cREF = sqrt( abs(2.*FSC_NORMAL_FIT / (1 + FSC_NORMAL_FIT)) ) * forceMask;
+%      This is oversampled to 501 points and done for each cone and cREF is normalized
+
+% SAVE METADATA
+% mRAW = masterTM.(cycle).fitFSC.Raw1 = {shellsFreq,
+%                                        shellsFSC,
+%                                        {cRef,cRefAli,bh_global_MTF},
+%                                        osX,
+%                                        forceMaskAlign,
+%                                        forceMask,
+%                                        nCones,
+%                                        coneList,
+%                                        halfAngle,
+%                                        samplingRate};
+% mRESAMPLE = masterTM.(cycle).(fitFSC).(ResampleRaw1) = [bestAnglesTotal(1:9); bestAnglesTotal(10:12),0,0,0,0,0,0];
+% mMASK = masterTM.(cycle).(fitFSC).(MaskRaw1) = {maskType, sizeMask, maskRadius, maskCenter, 1};
+% masterTM.(currentResForDefocusError) = 1/osX(oneBitCut);
+
+% PLOT
+%   1) cycleXXX_project_Raw-1-fsc_GLD.txt: table with spherical and conical FSC, oversampled.
+%   2) cycleXXX_project_Raw-1-fsc_GLD.pdf: save to FSC, with ONE/HAlFBIT curves and threshold.
+%   3) cycleXXX_project_Raw-1-cRef_GLD.pdf
+%   4) cycleXXX_project_Raw-1-cRefAli_GLD.pdf
+%

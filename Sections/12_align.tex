@@ -1,0 +1,52 @@
+\section{Subtomogram alignment} \label{sec:align}
+
+\subsection{Objectives}
+Once the reconstructions are generated, we can estimate the $\phi,\ \theta,\ \psi$ rotations and $x,\ y,\ z$ translations between the references and each particle, or in other words, we can maximise the constrained cross-correlation (CCC) between the references and each particle (more details in section \ref{sec:algo:align}). As this procedure directly compares the references with the particles and because the references result from the average of the transformed particles, the subtomogram averaging and alignment steps should be run until convergence of the references.
+
+\subsection{Parameters}
+\input{Figures_Tables/12_parameters}
+
+\subsection{Run} \label{sec:align:run}
+
+To call the subtomogram alignment procedure:
+\begin{lstlisting}
+>> emClarity alignRaw <param.m> <cycle_nb>
+\end{lstlisting}
+where \code{<param.m>} is the parameter file you want to use for this cycle and \code{<cycle\_nb>} is the cycle number. As the alignment needs the reconstructions, one must first run the subtomogram averaging procedure.
+
+The sub-regions are loaded and processed independently from one another during the alignment. Once the particles from a sub-region are aligned, the results from the alignment are saved in the \code{alignResume} directory. {\emClarity} will not re-run the alignment of a particular sub-region if the results for this sub-region are saved in \code{alignResume}. This creates the possibility to run multiple instances of {\emClarity} each one working on a different set of sub-regions. This is especially useful if you have multiple machines connected to the same storage (e.g a cluster). {\emClarity} offers two possibilities:
+\begin{itemize}
+    \item \textbf{Reverse order}: You can run two instances of {\emClarity}, the first one, as usual, will process the sub-regions in a particular order and save the results on a sub-region basis.
+\begin{lstlisting}
+>> emClarity alignRaw <param.m> <cycle_nb>
+\end{lstlisting}
+    Then, you can run the same job, but with a negative cycle number:
+\begin{lstlisting}
+>> emClarity alignRaw <param.m> -<cycle_nb>
+\end{lstlisting}
+    This second run will not update the metadata and will process the data in the reverse order. The first instance of {\emClarity} will use the results from this run to update the metadata.
+    
+    \item \textbf{Divide the dataset}: If you want to run more than two instances of {\emClarity}, it is also possible using the following signature.
+\begin{lstlisting}
+>> emClarity alignRaw <param.m> [<cycle_nb>, <idx>, <jobs>]
+\end{lstlisting}
+    where \code{<cycle\_nb>} is the cycle number (as usual), \code{<jobs>} is the number of total jobs to split into, which should be less than the number of sub-regions, of course. \code{<idx>} is the index of the current job, from 1 to \code{<total>}. For instance, if you want to share the alignment across 4 GPU nodes and your cycle number is 8, you have to run the following commands.
+\begin{lstlisting}
+>> emClarity alignRaw <param.m> [8, 1, 4]  # @node1
+>> emClarity alignRaw <param.m> [8, 2, 4]  # @node2
+>> emClarity alignRaw <param.m> [8, 3, 4]  # @node3
+>> emClarity alignRaw <param.m> [8, 4, 4]  # @node4
+\end{lstlisting}
+    Then, run the usual command as shown below. This should only take a few seconds as it only extracts the results saved in \code{alignResume} by the different jobs and update the metadata.
+\begin{lstlisting}
+>> emClarity alignRaw <param.m> 8
+\end{lstlisting}
+    
+\end{itemize}
+
+
+\subsection{Outputs}
+
+The results (relative rotation and shifts, plus the new associated CCC score, per particle) from the alignment are saved in \code{alignResume} and the metadata is updated.
+
+Usually at this point of the workflow, you can either start a new cycle and reconstruct the subtomogram average (section \ref{sec:avg}), the final reconstruction (section \ref{sec:final_map}) or run a classification, or you can stay in the same cycle and run a tilt-series refinement (section \ref{sec:tomoCPR}).

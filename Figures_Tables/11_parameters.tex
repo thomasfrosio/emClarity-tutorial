@@ -1,0 +1,79 @@
+% Parameters for avg
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{| l || p{108.5mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{avg} parameters]{\code{avg} parameters. Your parameter file should have the following parameters. \textcolor{myred}{\textbf{*}} indicates the required parameters, \textcolor{blue}{\textbf{*}} indicates expert parameters. Expert parameters should not be changed except if you know what you are doing. The other parameters are optional.} \label{param:avg}\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Sampling}}\\
+\hline
+
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+
+-- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Current bin factor (1 means no binning). The sub-region tomograms at this given binning must be already reconstructed in the \code{cache} directory. If they aren't, you'll need to run \code{ctf 3d} before running this step.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Mask}}\\
+\hline
+-- \code{Ali\_mType}\textcolor{myred}{\textbf{*}} & Type of mask; ``cylinder'', ``sphere'', ``rectangle''.\\
+-- \code{particleRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] particle radius, in \si{\angstrom}. It should be the smallest values to contain particle. For particles in a lattice, neighboring particles can be used in alignment by specifying a larger mask size, with \code{Ali\_Radius}, but this parameter must correspond to the central unit.\\
+-- \code{Ali\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}. The mask size must be large enough to contain the entire particle (i.e. larger than \code{particleRadius}), the delocalized signal, proper apodization, and to avoid wraparound error in cross-correlation.\\
+-- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom}, relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
+-- \code{scaleCalcSize}\textcolor{blue}{\textbf{*}} & Scale the box size (section \ref{sec:algo:avg:box}) by this number. Default=1.5.\\
+
+\hline
+\newpage
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Symmetry}}\\
+\hline
+
+-- \code{Raw\_classes\_odd}\textcolor{myred}{\textbf{*}} & Parameter used to control the C symmetry of the first half set. It should be ``\code{[0; <C>.*ones(2,1)]}'', where \code{<C>} is the central symmetry. This is equivalent to \code{[0; <C>; <C>]}.\\
+-- \code{Raw\_classes\_eve}\textcolor{myred}{\textbf{*}} & Parameter used to control the C symmetry of the second half set. It should be identical to \code{Raw\_classes\_odd}.\\
+
+-- \code{symmetry} & New parameter used to control the symmetry. CX, I/I2, O, and DX are supported. The old default will be used if this parameter is not specified.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Fourier shell correlation}}\\
+\hline
+
+-- \code{flgCones}\textcolor{myred}{\textbf{*}} & Whether or not {\emClarity} should calculate the conical FSCs. This will greatly impact the calculated half-maps if you have preferential orientation in the data-set. We recommend to leave this to 1 (true) throughout the workflow.\\
+
+-- \code{minimumParticleVolume}\textcolor{blue}{\textbf{*}} & Defines a minimum value for the $f_{mask}/f_{particle}$ ratio (section \ref{sec:algo:avg:molecular_mask} and \ref{sec:algo:avg:fsc}). Default=$0.1$\\
+
+-- \code{flgFscShapeMask}\textcolor{blue}{\textbf{*}} & Apply a very soft mask based on the particle envelope before calculating the FSC (section \ref{sec:algo:avg:molecular_mask}). We highly recommend to not turn this off. Default=1.\\
+
+-- \code{shape\_mask\_test} & Exit after saving the shape mask in \code{FSC/}. This is useful when testing the following two parameters. Default=0.\\
+
+-- \code{shape\_mask\_lowpass} & Low-pass cutoff, in \si{\angstrom}, to apply to the median filtered raw subtomogram averages. Default=14.\\
+
+-- \code{shape\_mask\_threshold} & Initial threshold used for the dilation. If you have extra "dust" outside your particle, it can be helpful to decrease the resolution used in the inital thresholding, i.e. increase \code{shape\_mask\_lowpass}, or to increase this threshold (or both). Default=2.4.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Others}}\\
+\hline
+
+-- \code{subTomoMeta}\textcolor{myred}{\textbf{*}} & Project name. At this step, {\emClarity} excepts to find the metadata \code{subTomoMeta}.mat in the project directory. Most output files will have the project name as prefix.\\
+
+-- \code{Raw\_className}\textcolor{myred}{\textbf{*}} & Class ID for subtomogram averaging and alignment. You should leave it set to zero.\\
+
+-- \code{Cls\_className}\textcolor{myred}{\textbf{*}} & Class ID for classification. You should leave it set to zero for now. For more information, see section \ref{sec:classification}.\\
+
+-- \code{Fsc\_bfactor}\textcolor{myred}{\textbf{*}} & Global B-factor applied to both references. See \ref{sec:algo:avg:wiener} for more detail. It can be a vector. In this case, if it is an intermediate reconstruction (i.e. reconstructing half-maps with \code{RawAlignment}) only the first value is used, if it is a final reconstruction (i.e. \code{FinalAlignment} introduced in section \ref{sec:final_map}), {\emClarity} will calculate one reconstruction per value registered in this vector.\\
+
+-- \code{flgClassify}\textcolor{myred}{\textbf{*}} & Whether or not this cycle is a classification cycle. It must be 0 if subtomogram alignment is the next step. More information on this in \ref{sec:classification}.\\
+
+-- \code{flgCutOutVolumes}\textcolor{blue}{\textbf{*}} & Whether or not each transformed particle (rotated and sifted) should be saved to \code{cache} directory. Note that the subtomogram have an extra padding of 20 pixel. This makes the reconstruction much slower if activated. Default=0.\\
+
+-- \code{flgQualityWeight}\textcolor{blue}{\textbf{*}} & The particles with an alignment score (Constrain Cross-Correlation score, CCC) below the average CCC score of the entire data-set are down-weighted before being added to the reference. This parameter regulates the strength of the weighting.\\
+
+-- \code{flgCCCcutoff}\textcolor{blue}{\textbf{*}} & Particles with an alignment score (Constrain Cross-Correlation score, CCC) below this value are ignored from the reconstruction. Default=0.\\
+
+-- \code{use\_v2\_SF3D} & Whether or not the new per-particle sampling function procedure should be used, as opposed to the older ``grouped'' sampling functions. This is the default since {\emClarity} 1.5.1.0. Default=1.\\
+
+%%%%% Optional
+% flgCutOutVolumes
+% loadTomo: is it useful? so it load the entire tomo in memory... mouais.
+
+\hline
+\end{longtable}

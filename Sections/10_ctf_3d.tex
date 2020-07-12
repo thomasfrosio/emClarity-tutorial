@@ -1,0 +1,20 @@
+\section{Reconstruct the tomograms} \label{sec:ctf_3d}
+
+\subsection{Objectives}
+
+The objective here is to reconstruct the tomograms that will be later used to extract the particles and calculate the references (i.e the half-maps). For high-resolution sub-tomogram averaging, we must account for a defocus gradient perpendicular to the til-axis, as well as a gradient through the thickness of the sample due to Ewald sphere curvature. The former is handled by multiplying the Fourier transform of each projection by their measured CTFs. In addition to correcting for contrast inversions, multiplication (rather than phase-flipping) also helps to supress noise near the CTF zeros. Previous approaches multiplied the CTF on thin strips or small tiles, which can lead to significant aliasing (see \cite{Tegunov2020} Figure S2 for a nice explanation). In {\emClarity}, the full tilt image is multiplied by the CTF for a given defocus, inverse Fourier transformed and then pixels corresponding to that defocus are extracted. This is repeated over the range of defoci in the image, thus avoiding any aliasing. Each view is also weighted according to the cumulative electron dose as described in \cite{exposure_grant_2015}. {\emClarity} then uses the {\IMOD} program {\tilt} to reconstruct the tomograms, preserving the full context of the tomogram while simultaneously considering local movement and anisotropic magnification due to microlensing from charge accumulation on the specimen \cite{MASTRONARDE2017102}.
+
+\subsection{Parameters}
+\input{Figures_Tables/10_parameters}
+\newpage
+
+\subsection{Run}
+
+To run it, you just need to specify your parameter file and {\emClarity} will look at the project metadata to extract the current alignment cycle. If your \code{cache} directory already contains reconstructions at this binning (\code{Ali\_samplingRate}), {\emClarity} will not override them. As such, you should remove any previous reconstructions at that binning from your \code{cache}.
+\begin{lstlisting}
+>> emClarity ctf 3d <param.m>
+\end{lstlisting}
+
+\subsection{Outputs}
+
+The binned tilt-series and CTF-corrected reconstruction are saved in the \code{cache} directory.

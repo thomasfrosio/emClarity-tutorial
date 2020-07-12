@@ -1,0 +1,104 @@
+\documentclass[12pt,a4paper]{article}
+
+\title{{\emClarity} v1.5.1.04 tutorial}
+
+\usepackage{tutorial}
+
+\begin{document}
+
+
+% First page
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+\thispagestyle{empty}
+\renewcommand{\baselinestretch}{0.75}\normalsize
+{
+  \hypersetup{linkcolor=black}
+  \tableofcontents
+}
+\renewcommand{\baselinestretch}{1.0}\normalsize
+\thispagestyle{empty}
+
+\newpage
+
+\thispagestyle{empty}
+\renewcommand{\baselinestretch}{0.75}\normalsize
+{
+  \hypersetup{linkcolor=black}
+  \listoffigures
+  \listoftables
+}
+\renewcommand{\baselinestretch}{1.0}\normalsize
+
+\newpage
+
+% How to use this guide
+\input{Sections/01_tutorial}
+\newpage
+
+% Workflow
+\input{Sections/02_project_directory}
+\newpage
+
+% Project directory.
+\input{Sections/03_get_data_ready}
+\newpage
+
+% Download tutorial dataset.
+\input{Sections/04_workflow}
+\newpage
+
+% Tilt-series alignment
+\input{Sections/05_tilt_series_alignment}
+\newpage
+
+% Ctf estimate
+\input{Sections/06_defocus_estimate}
+\newpage
+
+% Select the sub-regions
+\input{Sections/07_subregions}
+\newpage
+
+% Picking
+\input{Sections/08_picking}
+\newpage
+
+% Initialize the project
+\input{Sections/09_init}
+\newpage
+
+%
+\input{Sections/10_ctf_3d}
+\newpage
+
+%
+\input{Sections/11_avg}
+\newpage
+
+%
+\input{Sections/12_align}
+\newpage
+
+%
+\input{Sections/13_tomoCPR}
+\newpage
+
+%
+\input{Sections/14_classification}
+\newpage
+
+%
+\input{Sections/15_final_map}
+\newpage
+
+% Algorithms
+\input{Sections/16_algorithms}
+\newpage
+
+\bibliographystyle{unsrt}
+\bibliography{biblio}
+
+\end{document}

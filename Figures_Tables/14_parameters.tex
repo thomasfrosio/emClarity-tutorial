@@ -1,0 +1,85 @@
+% Parameters for avg
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{| l || p{110mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{pca} parameters]{\code{pca} parameters. Your parameter file should have the following parameters. \textcolor{myred}{\textbf{*}} indicates the required parameters, \textcolor{blue}{\textbf{*}} indicates expert parameters. Expert parameters should not be changed except if you know what you are doing. The other parameters are optional.}\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Sampling}}\\
+\hline
+
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+
+-- \code{Cls\_samplingRate}\textcolor{myred}{\textbf{*}} & Current binning factor (1 means no binning). The sub-region tomograms at this given binning must be already reconstructed in the \code{cache} directory. If they aren't, you'll need to run \code{ctf 3d} before running this step.\\
+
+-- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Binning factor (1 means no binning) of the half-maps of the current cycle. If this is different from \code{Cls\_samplingRate}, the reconstructions will be resampled to match \code{Cls\_samplingRate}.\\
+
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Masks}}\\
+\hline
+
+-- \code{Ali\_mType}\textcolor{myred}{\textbf{*}} & Type of mask used for the reconstruction; ``cylinder'', ``sphere'', ``rectangle''.\\
+-- \code{Cls\_mType}\textcolor{myred}{\textbf{*}} & Type of mask to use for the PCA; ``cylinder'', ``sphere'', ``rectangle''.\\
+
+-- \code{Ali\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}, used for the reconstruction.\\
+-- \code{Cls\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom} to use for the PCA.\\
+
+-- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom}, used for the reconstruction. These are relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
+-- \code{Cls\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom} to use for the PCA. These are relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
+
+-- \code{flgPcaShapeMask} & Calculate and apply a molecular to the difference maps. This molecular mask is calculated using the combined reference. Default=true.\\
+
+-- \code{test\_updated\_bandpass} & By default (0/false), low-pass filters are used to calculate the length scales. If true, use band-pass filters. See section \ref{sec:algo:classification:resolution_bands} for more details.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{PCA}}\\
+\hline
+
+-- \code{pcaScaleSpace}\textcolor{myred}{\textbf{*}} & Length scales, i.e. resolution bands, in \si{\angstrom}. If this is a vector, the PCA will be performed for each length scales and you will need to select the principal axes for each length scale.\\
+
+-- \code{Pca\_randSubset}\textcolor{myred}{\textbf{*}} & For very large data sets (tens of thousands) the principal axes describing the important variation can be obtained with a subset of the data, which saves a lot of computation. If 0, use the entire dataset, otherwise specify the number of particle that should be randomly selected to perform the decomposition. Usually 25\% or at least 3000-4000 is a good way to go.\\
+
+-- \code{Pca\_maxEigs}\textcolor{myred}{\textbf{*}} & Most of the variance is usually explained within the first 20 to 30 directions, so it is usually not useful to save all of the directions. Use this parameter to select the number of principal directions to save.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Clustering}}\\
+\hline
+
+-- \code{Pca\_coeffs}\textcolor{myred}{\textbf{*}} & The selected principal axes, for each length scale. Each length scale is a row. You can select as many (or few) from any resolution as you want, but the number of entries in each row must be constant. Use zeros to fill empty places.\\
+
+-- \code{Pca\_clusters}\textcolor{myred}{\textbf{*}} & The number of clusters to find. If this is a vector, the clustering will be calculated for each registered value.\\
+
+-- \code{Pca\_distMeasure} & This corresponds to the \code{Distance} entry of the \code{kmeans} function of MATLAB. By default, the squared Euclidean distance metric, i.e. each centroid is the mean of the points in that cluster.\\
+
+-- \code{Pca\_nReplicates} & This corresponds to the \code{Replicates} entry of the \code{kmeans} function of MATLAB. By default, the number of replicates is set to 128, i.e. the number of times to repeat clustering using new initial cluster centroid positions.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Others}}\\
+\hline
+
+-- \code{PcaGpuPull}\textcolor{myred}{\textbf{*}} & The decomposition is calculated on the CPU, but the difference maps are calculated on the GPU, which is much more efficient. This parameters controls how many difference maps should be held on the GPU at any given type.\\
+
+-- \code{flgClassify}\textcolor{myred}{\textbf{*}} & Specify that the this cycle is a classification cycle. Must be set to 1/true.\\
+
+-- \code{subTomoMeta}\textcolor{myred}{\textbf{*}} & Project name. At this step, {\emClarity} excepts to find the metadata \code{subTomoMeta}.mat in the project directory.\\
+
+-- \code{flgCutOutVolumes} & Whether or not each transformed particle (rotated and sifted) used to calculate the difference maps should be saved to \code{cache} directory. Note that the subtomogram have an extra padding of 20 pixel. This makes the pre-processing for the PCA much slower if activated. Default=0.\\
+
+-- \code{scaleCalcSize}\textcolor{blue}{\textbf{*}} & Scale the box size used to calculate the difference maps by this number. Default=1.5.\\
+
+-- \code{use\_v2\_SF3D} & Whether or not the new per-particle sampling function procedure should be used, as opposed to the older ``grouped'' sampling functions. This is the default since {\emClarity} 1.5.1.0. Default=1.\\
+
+\hline
+\end{longtable}
+
+
+
+
+
+
+
+
+% SuperResolution
+% Pca_symMask, only supports cylinder for some reason, so don't talk about it.
+% Pca_flattenEigs, 0

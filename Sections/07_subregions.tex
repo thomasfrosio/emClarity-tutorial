@@ -1,0 +1,64 @@
+\section{Select sub-regions} \label{sec:subregions}
+
+\subsection{Objectives}
+Quite often, the regions of interests don't take up the entire field of view. To speed things up and save memory, you can select the sub-regions you would like {\emClarity} to focus on. These sub-regions can be changed until the project is initialized (section \ref{sec:init}).
+
+You may notice as we go through this tutorial that we often thinks in term of sub-regions and not in terms of the full tomograms. For example, during picking (section \ref{sec:picking}), each sub-regions is processed independently from the others and if you decide to ignore one sub-regions from a tomogram, you can.
+
+    \begin{note} When the tilts-series alignment is later refined using tomogram constrained projection refinement (tomoCPR) the full area imaged is reconstructed on the fly, and all sub-tomograms from all sub-regions are inserted into this reconstruction to generate references. This allows a weighted contribution from all particles of all species to be considered, related to what ``M'' \cite{Tegunov2020} refers to as multi-particle refinement.
+    \end{note}
+    
+\subsection{Create the boundaries for each sub-regions}
+\begin{itemize}
+    \item Download from the repository the \href{https://github.com/bHimes/emClarity}{recScript2.sh} script and copy it inside the project directory.
+    
+    \item Prior to selecting the sub-regions, we need to create the tomograms containing the entire field of view. Running the following command from the project directory will do exactly that.
+\begin{lstlisting}
+./recScript2.sh -1
+\end{lstlisting}
+    By default, this will create a new directory, called \code{<projectDir>/bin10}, which will have a bin 10 tomogram for every stack created by \code{ctf estimate} (i.e. a tomogram for every\\ \code{aliStacks/$*$\_ali1.fixed}). 
+    
+    \item Now that we have the tomograms, we can start thinking about the sub-regions we want to select. The goal is to define 6 points which defines the boundaries of one sub-regions ($x_{min},\ x_{max},\ y_{min},\ y_{max},\ z_{min}$ and $z_{max}$). So if you have 3 sub-regions you are interested in for a particular tomogram, you will need to define $6\times3=18$ points.
+    
+    This is most easily done by creating an \href{https://bio3d.colorado.edu/imod/doc/binspec.html}{\textcolor{myred}{IMOD model}}:
+    \begin{itemize}
+        \item Go in \code{<projectDir>/bin10} and open the first tomogram with {\threedmod}:
+\begin{lstlisting}
+3dmod tilt1_bin10.rec
+\end{lstlisting}
+        \item Select the ``Model'' mode and select the 6 points in the order specified above. Each point must be in its own contour. For the tutorial data-set, as the ribosome are homogeneously spread across the entire tomogram, we recommend to divide the tomograms into 2 sub-regions of equal size. In this case, you'll need to create a sequence of 12 points.
+        
+        \item Save the model (\code{File} $\rightarrow$ \code{Save model}) with the same name as the tomogram but with the \code{.mod} extension.
+        
+        \item Repeat for each tomogram.
+        
+    \end{itemize}
+    At the end of this step, you should have in \code{<projectDir>/bin10}, one \code{*.mod} file per tilt-series you wish to process.
+
+% This is not accurate. -BAH
+ %   \begin{note}Each sub-regions will need to be transferred to GPU memory. Therefore, you should be careful not to %select too big sub-regions as there might not be enough memory to hold them, especially at bin 1. If the particles %of interest are homogeneously spread, we recommend to divide the field of view into 2 equal sub-regions.
+ %   \end{note}
+    \begin{note}Each sub-region is kept on disk, and only individual sub-tomograms are read in from them, reducing the amount of GPU memory needed. Due to the way MRC files are stored, the disk access can become slow when a given sub-region is very large, therefore, you should be careful not to select too big sub-regions as it can slow down processing. 
+    \end{note}
+
+    \item This \code{bin10} directory is not directly used by {\emClarity}. You'll need to convert the \code{*.mod} files you just created into something {\emClarity} understands. You can do this on the first stack by running:
+\begin{lstlisting}
+./recScript2.sh tilt1
+\end{lstlisting}
+    Or to convert every sub-regions of every tomograms, run:
+\begin{lstlisting}
+#!/bin/bash
+for stack in bin10/*.mod; do
+    prefix=${stack#bin10} ; ./recScript2.sh ${prefix%.mod}
+done
+\end{lstlisting}
+
+    This will create a directory called \code{<projectDir>/recon} with the file {\emClarity} needs to extract the sub-regions you selected:
+    \input{Figures_Tables/07_recon_coords}
+
+    \begin{note}If you change the coordinates of the sub-regions, you must do it before running \code{init} (section \myref{sec:init}) and you always need to refresh the \code{<projectDir>/recon} directory by re-running \code{./recScript2.sh <prefix>}.
+    \end{note}
+    
+    \begin{note}In this last step, \code{recScript2.sh} needs Python2 in the PATH.
+    \end{note}
+\end{itemize}

@@ -1,0 +1,55 @@
+\section{Tilt-series refinement} \label{sec:tomoCPR}
+
+\subsection{Objectives}
+
+Colloidal gold beads have two key characteristics: they are highly contrasted and they are mostly round. As such, it is quite easy to define the ($x$, $y$) center of each bead over every projection, making them suitable fiducial markers for tilt-series alignments. Unfortunately, we need a lot of beads in the field of view to have an accurate description of the local ``movements'' in the specimen. Fortunately, subtomogram averaging provides accurate estimates of both particle positions and high SNR reconstructions, making them excellent fiducial markers. It is thus possible to leverage this information for improving the alignment of a tilt-series.
+
+To do so, the density corresponding to the particles in the original tomogram is replaced with a copy of the subtomogram average at the appropriate orientation. This augmented tomogram is then re-projected into a tilt-series using the current global and local geometric model. Tiles around each subtomograms projected origin are convoled with the local CTF (phase correction) and aligned locally to the corresponding tile from the raw data. This defines a new fiducial model that can be used by {\tiltalign} to refine the tilt-series alignment.
+
+\begin{note}As the entire tomogram is projected, the reference projections generated to refine the location of the subtomogram fiducial markers in the raw images include information from neighboring reprojected particles, as well as any other local densities.
+\end{note}
+    
+\begin{note}{\tiltalign} forces the fiducial markers to behave similarly within a given projection (spatial restrictions), while also requiring them to vary smoothly as a group from projection to projection (spatiotemporal restrictions).
+\end{note}
+
+
+\subsection{Parameters}
+
+\input{Figures_Tables/13_parameters}
+
+\subsection{Run}
+
+\subsubsection{Tilt-series refinement}
+The tilt-series refinement should be ran after \code{avg} or \code{alignRaw}.
+To run it, run the following command:
+\begin{lstlisting}
+>> emClarity tomoCPR <param.m> <cycle_nb>
+\end{lstlisting}
+where \code{<param.m>} is the parameter file you want to use for this cycle and \code{<cycle\_nb>} is the cycle number.
+
+This create a new directory, called \code{mapBack<n>}, where \code{<n>} is the number of \code{tomoCPR} that you have ran before. This directory contains all the outputs from {\tiltalign}. See section \ref{sec:algo:tomoCPR} for more information about the outputs.
+
+Similarly to the subtomogram alignment, \code{tomoCPR} can be divided into multiple jobs. To do so, you will have to use the following signature:
+\begin{lstlisting}
+>> emClarity tomoCPR <param.m> [<cycle_nb>, <idx>, <jobs>]
+\end{lstlisting}
+where \code{<cycle\_nb>} is the cycle number (as usual), \code{<jobs>} is the number of total jobs to split into, which should be less than the number of sub-regions, of course. \code{<idx>} is the index of the current job, from 1 to \code{<total>}. For instance, if you want to share the refinement across 4 GPU nodes and your cycle number is 8, you have to run the following commands.
+\begin{lstlisting}
+>> emClarity tomoCPR <param.m> [8, 1, 4]  # @node1
+>> emClarity tomoCPR <param.m> [8, 2, 4]  # @node2
+>> emClarity tomoCPR <param.m> [8, 3, 4]  # @node3
+>> emClarity tomoCPR <param.m> [8, 4, 4]  # @node4
+\end{lstlisting}
+Then, run this final command to update the metadata:
+\begin{lstlisting}
+>> emClarity tomoCPR <param.m> [8,0,0]
+\end{lstlisting}
+
+
+\subsubsection{Update the aligned tilt-series}
+\code{tomoCPR} does not update the aligned the tilt-series, so to make the new tilt-series alignment effective, you have to run:
+\begin{lstlisting}
+>> emClarity ctf update <param.m> <cycle_nb>
+\end{lstlisting}
+
+This will create a new aligned tilt-series in \code{aliStacks/<prefix>\_ali<n+1>.fixed}, using the updated tilt-series alignment from \code{tomoCPR}, as well as a new \code{*\_ctf.tlt} file (table \ref{tab:ctf_tlt}) in \code{fixedStacks/ctf/<prefix>\_ali<n+1>\_ctf.tlt}.

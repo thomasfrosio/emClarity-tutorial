@@ -1,0 +1,168 @@
+\subsection{Defocus estimate} \label{sec:algo:defocus_estimate}
+
+The defocus estimate is used at almost every step of the workflow to compute the theoretical CTFs. This procedure, called by \code{ctf estimate} is divided into 3 main steps. First, the raw tilt-series is transformed to compute the aligned tilt-series. Second, the average defocus of the entire aligned stack is estimated. Finally, the defocus is refined for each view.
+
+\subsubsection{Transform the tilt-series} \label{sec:algo:defocus_estimate:transform}
+
+\begin{enumerate}
+    \item \textbf{Pre-processing}: For each view of the input stack, ``hot'' pixels, i.e. pixels 6 standard deviations away from the mean of the view, are replace by random scaled values. Moreover, frequencies after Nyquist are removed by low-pass filtering.
+
+    \item \textbf{Transformation}: Each view of the pre-processed stack is transformed using the alignment files in \code{fixedStacks}, which effectively align the tilt-axis to the center of the images and parallel to the $y$ axis.
+    \begin{enumerate}
+        \item Load \code{fixedStacks/<prefix>.xf}, decompose the rotation matrix into magnification and rotation $\bm{R}$, and get the $\bm{T}_x$ and $\bm{T}_y$ shifts.
+        \item Pad the view with its mean by a factor of 2, compute the forward Fourier transform and apply the magnification, rotation and shifts to the transform with bilinear interpolation. The spectrum is then Fourier cropped by a factor of 2 and inverse Fourier transformed to switch it back to real space. Increasing the sampling for the transformation reduces noise due to aliasing. Non-sampled regions are set to the mean, which is set to 0.
+        
+        \item Apply the same transformation to a mask of ``ones'' of the same size as the view. This mask is used to track down non-sampled regions of the view. The stack of masks (1 mask per view) is saved as \code{aliStacks/<prefix>\_ali1.samplingMask} and will be used later in the workflow.
+    \end{enumerate}
+    
+    \item \textbf{Erase the beads}: If \code{fixedStacks/<prefix>.erase} exists, spherical masks of diameter $1.2\times\code{beadDiameter}$ and positioned at the coordinates specified by this file, are used to replace the beads by random scaled values. The coordinates are applied directly on the aligned stack, not on the raw stack.
+
+    \item \textbf{Post-processing}:
+    \begin{enumerate}
+        \item In case ``hot'' pixels were introduced during transformation, these pixels are removed as in step \textbf{1} from the sampled regions (un-sampled pixels are delimited by the sampling mask from step \textbf{2.c}).
+        % I'm not sure this ever happens. Maybe it's for something else?
+
+        \item To keep track of the increasing thickness with the tilt angle, the views $i$ are divided by their fraction of inelastic scattering events, $\bm{f}_{inelastic}$ defined as:
+        
+        \begin{equation} \label{eq:f_inelatic}
+        {[\bm{f}_{inelastic}]}_i = {\exp\left( \frac{-\bm{t}}{\cos(\bm{\alpha}_{i}) \times \bm{t}_{inelastic}} \right)}\ /\ {\exp\left( \dfrac{-\bm{t}}{\cos(\bm{\alpha}_{min}) \times \bm{t}_{inelastic}} \right)}
+        \end{equation}
+
+        where $\bm{t}$ is the thickness estimate of the tomogram, which is set to 75nm, $\bm{\alpha}_i$ is the tilt-angle of the $i^{th}$ view, $\bm{\alpha}_{min}$ is the lowest tilt-angle for the tilt-series and $\bm{t}_{inelastic}$ is the mean-free path of the inelastic scattering events, which is set to 400nm. 
+        % The thickness estimate can be later refined during \code{tomoCPR} (section \ref{sec:tomoCPR}). => I thought so but actually no
+        \item Similarly, if a Saxton/cosine dose-scheme is used, the views $i$ are divided by $1/\cos(\bm{\alpha}_i)$.
+    \end{enumerate}
+
+    \item \textbf{Save tilt-series}: Save the aligned, fraction weighted, bead-erased tilt-series as \code{aliStacks/<prefix>\_ali1.fixed}. These stacks are used by \code{templateSearch} (section \ref{sec:picking}) and \code{ctf 3d} (section \ref{sec:ctf_3d}) to reconstruct the tomograms.
+\end{enumerate}
+
+% Average defocus search
+
+\subsubsection{Average power spectrum} \label{sec:algo:defocus_estimate:avg_ps}
+
+We estimate the defocus by fitting theoretical CTFs, with varying defoci, to the power spectrum of the image. The quality of the fitting vastly depends on the magnitude of the Thon rings relative to the background. In a tilted image, the defocus ramp decreases the magnitude of the Thon rings, ultimately reducing the number of Thon rings in the power spectrum, thus reducing the accuracy of the defocus estimate. To reduce the negative interference between regions with different defoci (i.e. to reduce the effect of the defocus ramp), we exclude from the calculation of the power spectrum the regions that are ``too high'' or ``too low'' (defined by \code{deltaZtolerance}) from the tilt axis. So, if the tilt axis is parallel to the $y$ axis, the selected coordinates should satisfy:
+\begin{equation}
+    -\code{deltaZtolerance} < x \tan(\bm{\alpha}) < +\code{deltaZtolerance}
+\end{equation} % in practice its *-1, but here we don't care I think.
+where $\bm{\alpha}$ is the tilt angle and the $x$ coordinates are centered, meaning that the center of the axis (i.e. where the tilt axis is) is equal to $0$.
+    
+For each image, the tiles within the selected regions are extracted, padded by a factor of 2 and the average 2D power spectrum of these tiles $|\bm{W}_{exp}(q_{hk},\phi)|$ is calculated. By summing all of the average 2D power spectra of the tilt-series, we now have one 2D average power spectrum gathering the signal of only the regions ``close'' to the tilt axis in $z$.
+
+\subsubsection{Average defocus} \label{sec:algo:defocus_estimate:avg_defocus}
+
+This first search consists into finding a first rough estimate of the average defocus of the tilt-series, at the tilt axis. For now, we will ignore the astigmatism and compute the radial average of $|\bm{W}_{exp}(q_{hk},\phi)|$. We refer to this radial average as $|\bm{W}_{exp}(q_{h})|$. In order to find the defocus value $\bm{\mathrm{z}}$, we are going to fit a theoretical CTF curve against this radial average. To do so, a range of defocus value is going to be tested, such as for each $i^{th}$ defocus $\bm{\mathrm{z}}_{i} = \code{defEstimate} \pm \code{defWindow}$, 1nm increment:
+\begin{enumerate}
+    \item \textbf{Get the CTF}: Calculate the 1D theoretical CTF, $\bm{W}_{i}(q_{h})$, in 1/\si{\angstrom}. Note that the defocus $\bm{\mathrm{z}}_i$ is the only variable from one iteration to another.
+    \begin{gather}
+        \lambda = {1226.39\times10^{-2}}/{\sqrt{\code{VOLTAGE} + 0.97845\times10^{-6}\times\code{VOLTAGE}^2}}\notag\\
+        E(q_h) = \frac{ e^{ -20{\left( q_h \times \code{PIXEL\_SIZE}\times10^{10} \right)}^{1.25}} + 0.1 } {1.1}\notag\\
+        \bm{W}_{i}(q_h) = \sin{ \left( \frac{\pi}{2}\ \code{Cs}\ \lambda^{3}\ q_h^4 + \pi\ \lambda\ \bm{\mathrm{z}}_i\ q_h^2 - \code{AMPCONT} \right)}\ E(q_h)\label{eq:ctf}
+    \end{gather} % maybe I should make the Planck constant etc. appear in the equation... % \frac{ 0.5 }{ h_{max}
+    where $\lambda$ is the relativistic wavelength of the electrons, in \si{\angstrom}. $E$ is an ad-hoc envelope, in 1/\si{\angstrom}, down-weighting higher frequencies. \code{Cs} is the spherical aberration constant, in \si{\angstrom}.
+        
+    \item \textbf{Background estimate}: if $\bm{\mathrm{z}}_i$ is correct, the zeros of $|\bm{W}_i(q_h)|$ should be at the background level. Therefore, we extract the values of $|\bm{W}_{exp}(q_h)|$ at the $q_h$ frequencies where the zeros should be, i.e. where $\bm{W}_i(q_h)=0$. A smooth curve is fitted to these sampled points and used as the background estimate $\bm{B}_{exp}(q_h)$. We refer to the background-subtracted radial average as $|\bm{W}_{exp-B}(q_h)|$. The position of the zeros varies depending on the defocus, therefore the closer we get from the true defocus, the more accurate the background estimate, the greater the correlation between $|\bm{W}_i(q_h)|$ and $|\bm{W}_{exp-B}(q_h)|$.
+        
+    \item \textbf{Calculate the CC score}: Only the frequencies, referred as $q_{h'}$, from slightly before the first zero to the first zero after \code{defCutoff} are considered. The CTF curves are normalized and the normalized cross-correlation is calculated as follow:
+    \begin{equation}
+        \bm{\mathrm{CC}}_{i} = \frac{
+            \sum_{q_{h'}=1}^{Q_{h'}}\ {|\bm{W}_i(q_{h'})|}\ |\bm{W}_{exp-B}(q_{h'})|
+            }{ Q_{h'}\ \bm{\sigma}_{i}\ \bm{\sigma}_{exp-B} }
+    \end{equation}
+    where $Q_{h'}$ is the number of total $q_{h'}$ frequencies. $\bm{\sigma}_{i}$ and $\bm{\sigma}_{exp-B}$ are the standard deviations of $|\bm{W}_{i}|$ and $|\bm{W}_{exp-B}|$ within the $q_{h'}$ frequencies.
+\end{enumerate}
+
+The selected defocus, $\bm{\mathrm{z}}_{best}$, is the defocus that gave the best fit, i.e. the maximal $\bm{\mathrm{CC}}_{i}$. To help analysing the results, the following plots are saved:
+\begin{itemize}
+    \item \code{fixedStacks/ctf/<prefix>\_ali1\_ccFIT.pdf}: every $\bm{\mathrm{CC}}_i$ for every sampled $\bm{\mathrm{z}}_i$.
+    \item \code{fixedStacks/ctf/<prefix>\_ali1\_bgFit.pdf}: the radial average (before background subtraction) $|\bm{W}_{exp}|$ and the estimated background $\bm{B}_{exp}$ computed using $\bm{\mathrm{z}}_{best}$, as a function of $q_{h'}$ frequencies. For visualization, the background curve is slightly shifted down.
+    \item \code{fixedStacks/ctf/<prefix>\_ali1\_psRadial\_1.pdf}: the background-subtracted radial average $|\bm{W}_{exp-B}|$ (in black) and the theoretical CTF $|\bm{W}_{best}|$ (in gree), that gave the best fit, as a function of $q_{h'}$ frequencies.
+\end{itemize} \label{subsubsec:avf_def}
+
+\subsubsection{Average astigmatic defocus}
+
+Until now, we have used the 1D radial average of the 2D power spectrum, $|\bm{W}_{exp}(q_h)|$,  to estimate the defocus. In order to account for astigmatism, we will now use the 2D power spectrum, $|\bm{W}_{exp}(q_{hk}, \phi)|$, computed in section \ref{sec:algo:defocus_estimate:avg_ps}.
+
+% We could have a background based on the current astigmastim. This is more expensive but we have all the tools to do so.
+One difference from the initial search is that we'll use the same background throughout the search. As there could be astigmatism in the images, this is less precise, but it is enough for now and it will be refined later anyway. We do as follow:
+\begin{enumerate}
+    \item \textbf{Background estimate}: Using $\bm{\mathrm{z}}_{best}$, calculated at the previous step, we compute $\bm{W}_{best}(q_h)$, as in equation \ref{eq:ctf}. Then, we extract from $|\bm{W}_{exp}(q_{hk})|$ 18 lines positioned at different angles (from 2.5\textdegree\ to 87.5\textdegree, 5\textdegree\ increment). For each of the 18 lines, we extract the CTF values of $|\bm{W}_{exp}|$ at the $q_{hk}$ frequencies where the zeros should be, i.e. where $|\bm{W}_{best}(q_{h})|=0$ and fit a smooth curve along these values. These curves are averaged and a 2D cubic spline is fitted to this average. This is the 2D background estimate, $\bm{B}_{exp}(q_{hk})$ and we refer to the background-subtracted power spectrum as $|\bm{W}_{exp-B}(q_{hk})|$.
+        
+    \item $|\bm{W}_{exp}|$ and $|\bm{W}_{exp-B}|$ are saved as \code{<prefix>\_avgPS.fixed} and \code{<prefix>\_avgPS-bgSub.fixed}, in \code{fixedStacks/ctf}. Only the $q_{h'k'}$ frequencies are shown, as they are the only ones to be considered during the search.
+\end{enumerate}
+    
+Once the 2D-background-subtracted power spectrum is calculated, we can start the defocus search. The defocus value $\bm{\mathrm{z}}_{best}$ will stay unchanged during this search. The goal here is to find the defocus shift $\bm{\Delta\mathrm{z}}_{ast}$ and the astigmatic angle $\bm{\phi}_{ast}$. For this search, $\bm{\Delta\mathrm{z}}_{ast}$ is a range of $i$ values, from -200nm to 200nm, with 15nm steps and $\bm{\phi}_{ast}$ is a range of $j$ values, from -45\textdegree\ to 45\textdegree, with 10\textdegree\ step:
+
+\begin{enumerate}
+    \item \textbf{Get the CTF}: Calculate the 2D CTF. This is similar to equation \ref{eq:ctf}, but now the defocus varies with the direction of the azimuthal angle $\phi$, such as:
+    \begin{gather}
+        \bm{\mathrm{z}}_{i,j}(\phi) = (\bm{\mathrm{z}}_{best} - {[\bm{\Delta \mathrm{z}}_{ast}]}_i) \cos(\phi - {[\bm{\phi}_{ast}]}_j) + (\bm{\mathrm{z}}_{best} + {[\bm{\Delta \mathrm{z}}_{ast}]}_i) \sin(\phi - {[\bm{\phi}_{ast}]}_j)\notag\\
+        \bm{W}_{i,j}(q_{hk},\phi) = \sin{ \left( \frac{\pi}{2}\ \mathrm{Cs}\ \lambda^3\ q_{hk}^4 + \pi\ \lambda\ \bm{\mathrm{z}}_{i,j}(\phi)\ q_{hk}^2 - \code{AMPCONT} \right)}\ E(q_{hk})\label{eq:ctf2}
+    \end{gather}
+
+    \item \textbf{Calculate the CC score}: Only the frequencies, referred as $q_{h'k'}$, from slightly before the first zero to the first zero after \code{defCutoff} are considered. The CTF curves are normalized and the normalized cross-correlation is calculated as follow:
+    \begin{equation}
+        \bm{\mathrm{CC}}_{i,j} = \frac{
+                \sum_{q_{h'k'}=1}^{Q_{h'k'}}\ |\bm{W}_{i,j}(q_{h'k'},\phi)|\ |\bm{W}_{exp-B}(q_{h'k'},\phi)|
+                }{ Q_{h'k'}\ \bm{\sigma}_{i,j}\ \bm{\sigma}_{exp-B} }
+    \end{equation}
+        where $Q_{h'k'}$ is the number of total $q_{h'k'}$ frequencies. $\bm{\sigma}_{i,j}$ and $\bm{\sigma}_{exp-B}$ are the standard deviations of $|\bm{w}_{i,j}|$ and $|\bm{w}_{exp-B}|$ within the $q_{h'k'}$ frequencies.
+\end{enumerate}
+    
+The astigmatic defocus, referred as ($\bm{\mathrm{z}}_{best}$, $\bm{\Delta\mathrm{z}}_{best}$, $\bm{\phi}_{best}$), is the defocus that gave the best fit, i.e. the maximal $\bm{\mathrm{CC}}_{i,j}$ score.
+    
+Another defocus search is done on the power spectrum, with a finer sampling around the current best defocus. $\bm{\Delta\mathrm{z}}_{ast}$ is now a range of $i'$ values, from $\bm{\Delta\mathrm{z}}_{best}-$ 7.5nm to $\bm{\Delta\mathrm{z}}_{best}+$ 7.5nm, with 3.75nm steps and $\bm{\phi}_{ast}$ is now a range of $j'$ values, from $\bm{\phi}_{best}-$ 5\textdegree\ to $\bm{\phi}_{best}+$ 5\textdegree, with 0.5\textdegree\ step. The refined astigmatic defocus, referred as ($\bm{\mathrm{z}}_{best}$, $\bm{\Delta\mathrm{z}}_{best'}$, $\bm{\phi}_{best'}$), is the defocus that gave the best fit, i.e. the maximal $\bm{\mathrm{CC}}_{i',j'}$ score.
+
+\subsubsection{Handedness check}
+
+By convention, the defocus is a positive value. As such, if the sample is tilted, the regions higher than the tilt axis have a smaller defocus and the regions lower than the tilt axis have a larger defocus. If it is the opposite, it means the projections were flipped or the tilt-angles are not in the correct order or the tilt axis used for alignment is 180\textdegree\ off. In section \ref{sec:algo:defocus_estimate:avg_ps}, we have selected regions at about the same defocus than the tilt axis ($\pm \ \code{deltaZtolerance}$) to reduce interference in the radial average between regions with "significantly" different defoci. Here, we do the same, but we apply a $z$ shift to only select regions that are significantly above the tilt axis ($-\code{zShift}$), referred as $|\bm{W}_{-z}|$, or significantly below the tilt axis ($+\code{zShift}$), referred as $|\bm{W}_{+z}|$.
+
+As described in section \ref{sec:algo:defocus_estimate:avg_defocus}, we have an estimate of the defocus value at the tilt-axis, referred as $\bm{\mathrm{z}}_{best}$, but we can also estimate the defocus for both $|\bm{W}_{-z}|$ and $|\bm{W}_{+z}|$. As such, we calculate the defocus estimate of the regions of the specimen that were imaged while being above the tilt axis (or at least we assume so), referred as $\bm{\mathrm{z}}_{-z}$, and a defocus estimate of the regions of the specimen that were imaged while being below the tilt axis (again, we assume so), referred as $\bm{\mathrm{z}}_{+z}$. As in section \ref{sec:algo:defocus_estimate:avg_defocus}, the fits are saved in \code{fixedStacks/ctf/<prefix>\_ali1\_psRadial\_2.pdf} and \code{fixedStacks/ctf/<prefix>\_ali1\_psRadial\_3.pdf}, respectively.
+
+The regions below the tilt axis should be farther away from the focus compared to the regions above the tilt axis, thus if $\bm{\mathrm{z}}_{-z} < \bm{\mathrm{z}}_{best} < \bm{\mathrm{z}}_{+z}$, then the handedness is probably correct. On the other hand, if $\bm{\mathrm{z}}_{-z} > \bm{\mathrm{z}}_{best} > \bm{\mathrm{z}}_{+z}$, the handedness is probably wrong.
+
+\subsubsection{Per-view astigmatic defocus} \label{sec:algo:defocus_estimate:per_view_defocus}
+
+So far, every 2D power spectra and 1D radial averages were the result of an average across the entire tilt-series. Therefore, we could only estimate an average defocus and average astigmatism. In practice, each view can be at a different defocus and have a different astigmatism. Consequently, we should work on one projection at a time.
+
+We have to deal mostly with tilted images, which inherently have less Thon rings than non-tilted images, making the CTF fitting more complicated. Moreover, there is considerably less signal in one single image than in the entire tilt-series. As such, excluding regions with a ``significantly'' different defocus, as in section \ref{sec:algo:defocus_estimate:avg_ps}, is not possible.
+    
+Fortunately, if an image is tilted with a known tilt, we can account for its defocus ramp and correct for it. By stretching/compressing the power spectrum of different sub-regions (i.e. tiles) of a tilted image, we can make them all constructively interfere with each other. As a result, the analysis of tilted specimens becomes almost as good as for non-tilted specimens, up to the point where the signal is getting weaker due to the increased thickness.
+    
+Padding an image in real space is effectively stretching its power spectrum. On the other hand, cropping an image in real space is effectively compressing its power spectrum. As such, with the correct padding/cropping factor, one can make two power spectra with different defoci constructively interfere. The tiles below the tilt axis have a larger defocus, so to make their power spectrum constructively interfere with the tiles at the tilt axis, it is likely that we'll need to pad them in order to stretch their power spectrum. On the other hand, the tiles above the tilt axis have a smaller defocus, so we'll need to crop the tiles in order to compress their power spectrum.
+
+To prevent loosing some information during cropping, all the tiles are padded in advance to \code{paddedSize} (default=768), to make sure the cropping will not intrude actual data. As such, the goal of this section is to find, for each view $i$ and for each tile $j$, the padding factor $\bm{f}_{i,j}$, which, by stretching the power spectrum of the tile, maximizes the constructive interference between the power spectrum of the tile and the power spectrum at the tilt-axis. The CTF at the tilt-axis, $\bm{W}_{tilt}$, is defined by $\bm{\mathrm{z}}_{best}$, the average defocus at the tilt-axis calculated in section \ref{sec:algo:defocus_estimate:avg_defocus}. The output size of the tile $j$ from view $i$, is defined as:
+\begin{equation} \label{eq:scale_size}
+    \bm{X}_{i,j} = \mathrm{floor} (\code{paddedSize} \times \bm{f}_{i,j})
+\end{equation}
+
+\begin{note}If the \code{PIXEL\_SIZE} is lower than 2\si{\angstrom}, the Thon rings start to be compressed in a very small frequency window, which makes the analysis more complicated. In this case, we Fourier crop the tilt-series at 2\si{\angstrom}, effectively stretching the power spectrum of the image and making the CTF fitting easier.
+\end{note}
+
+% I am not talking about the first step where we exclude some highly tilted regions (regions that are exposed only in SOME view). TODO.
+
+Each image is divided into overlapping tiles. For each view $i$ of the tilt-series and for each tile $j$:
+
+\begin{enumerate}
+    \item \textbf{Defocus shift}: We can calculate the defocus shift $\bm{\Delta \mathrm{z}}_{i,j}$ between a tile and the tilt-axis:
+    \begin{equation}
+        \bm{\Delta \mathrm{z}}_{i,j} = -x_{j}\tan(\bm{\alpha}_i)
+    \end{equation}
+    where $\bm{\alpha}_i$ is the tilt-angle, $x_{j}$ is the center of the tile in $x$. The $x$ coordinates are centered, meaning that the position of the tilt-axis in $x$ is 0. Of course, this assumes that the tilt-axis is parallel to the $y$ axis and that the defocus is a positive number. The defocus of the tile is defined as $\bm{\mathrm{z}}_{i,j} = \bm{\mathrm{z}}_{best} + \bm{\Delta \mathrm{z}}_{i,j}$ and we can calculate the CTF of the tile, $\bm{w}_{i,j}(q_h)$, as in equation \ref{eq:ctf}.
+
+    \item \textbf{Padding factor estimate}: If we know $\bm{\Delta \mathrm{z}}_{i,j}$ and $\bm{\mathrm{z}}_{best}$, we can calculate a first estimate of the padding factor $\bm{f}_{i,j}$. One can note that if the tilt-angle is 0\textdegree, $\bm{f}_{i,j} = 1$ (i.e no padding).
+    \begin{equation}
+        \bm{f}_{i,j} = \sqrt{ \left( 1 + \frac{ \bm{\Delta \mathrm{z}}_{i,j} }{ \bm{ \mathrm{z}}_{best} } \right) }
+    \end{equation}
+
+    \item \textbf{Padding factor refinement}: At this point, $\bm{f}_{i,j}$ is just an estimate. The goal of this step is to refine $\bm{f}_{i,j}$ only based on how good the fit is between $\bm{W}_{i,j}(q_h)$ and $\bm{W}_{tilt}(q_h)$. As such, for each $\bm{f}_{i,j,k}$, within $\bm{f}_{i,j}-1$ up to $\bm{f}_{i,j}+1$, with a 0.001 $k$ step:
+    \begin{enumerate}
+        \item Stretch $\bm{W}_{i,j}(q_h)$ by a factor of $\bm{f}_{i,j,k}$, using linear interpolation.
+        \item Calculate the normalized cross-correlation $\bm{\mathrm{CC}}_{i,j,k}$ between the stretched $\bm{W}_{i,j,k}(q_h)$ and $\bm{W0}_{tilt}(q_h)$.
+    \end{enumerate}
+    The padding factor that gave the best fit, ${[\bm{f}_{best}]}_{i,j}$, is selected and further refined within ${[\bm{f}_{best}]}_{i,j}-0.01$ up to ${[\bm{f}_{best}]}_{i,j}+0.01$, with a 0.0001 $k'$ step. The final padding factor is referred to as ${[\bm{f}_{best'}]}_{i,j}$
+\end{enumerate}
+
+Each tile of each view is then padded, in real space, using their ${[\bm{f}_{best'}]}_{i,j}$, as in equation \ref{eq:scale_size}. For each view, the average power spectrum of the padded tiles is calculated and stacked into \code{fixedStacks/ctf/<prefix>\_ali1-PS.mrc}. These power spectra are band-pass filtered (saved as \code{*ali1-PS2.mrc}), as discussed in section \ref{sec:algo:defocus_estimate:avg_defocus}, to only include the frequencies from slightly before the first zero to the first zero after \code{defCutoff}.
+
+Finally, these band-passed power spectra are sent to \href{https://grigoriefflab.umassmed.edu/ctffind4}{CTFFIND 4} for analysis, resulting into a per-view defocus value $\bm{\mathrm{z}}_{i}$, a per-view astigmatic defocus shift ${[\bm{\Delta\mathrm{z}}_{ast}]}_{i}$ and a per-view astigmatic angle ${[\bm{\phi}_{ast}]}_{i}$. The outputs for each view $i$ is saved in the following table.
+\input{Figures_Tables/06_ctf_tlt}

@@ -1,0 +1,57 @@
+\begin{figure}[!htb]  % Stay within section
+\captionsetup{labelfont=bf}
+\centering
+
+\begin{tikzpicture}[every node/.style={minimum width=1.4cm,minimum height=7mm}]
+
+\node (pcr) {${[\bm{S}_r \bm{V}^{T}_{r}]}_{best}$};
+\draw[dashed](pcr.west)--($(pcr.west)+(-3.1,0)$);
+
+\node (pc2) at ($(pcr)+(-1.3,-1.94)$) {${[\bm{S}_2 \bm{V}^{T}_{2}]}_{best}$};
+\draw[dashed](pc2.west)--($(pc2.west)+(-1.8,0)$);
+
+\node (pc1) at ($(pc2)+(-1.3,-1.94)$) {${[\bm{S}_1 \bm{V}^{T}_{1}]}_{best}$};
+\draw[dashed](pc1.west)--($(pc1.west)+(-0.5,0)$);
+
+% pc all
+\matrix (pcall) [draw,matrix of math nodes,fill=white] at ($(pc1)+(+4,-4)$)
+{
+c_{1,1} & \cdots & c_{1,a+1} & \cdots & c_{1,b+1} & \cdots\\
+c_{2,1} & \cdots & c_{2,a+1} & \cdots & c_{2,b+1} & \cdots\\
+\cdots & \ddots & \cdots & \ddots & \cdots & \ddots\\
+c_{p,1} & \cdots & c_{p,a+1} & \cdots & c_{p,b+1} & \cdots\\
+};
+
+\draw[arrow](pcall.south west)--(pcall.south east) node[midway,sloped,below] {$a+b+c$ axes};
+\draw[arrow](pcall.north west)--(pcall.south west) node[midway,sloped,below] {$p$ particles};
+
+\node (dima) at ($(pcall)+(-2.75,0)$) [draw,minimum width=2.5cm,minimum height=3.1cm] {};
+\draw[arrow](pc1.east)-|($(dima.north)+(0,0)$) node[near end,sloped,above] {$a$ axes};
+
+\node (dimb) at ($(pcall)+(0,0)$) [draw,minimum width=2.5cm,minimum height=3.1cm] {};
+\draw[arrow](pc2.east)-|($(dimb.north)+(0,0)$) node[near end,sloped,above] {$b$ axes};
+
+\node (dimc) at ($(pcall)+(2.75,0)$) [draw,minimum width=2.5cm,minimum height=3.1cm] {};
+\draw[arrow](pcr.east)-|($(dimc.north)+(0,0)$) node[near end,sloped,above] {$c$ axes};
+
+
+% kmeans
+\matrix (kmeans) [draw,matrix of math nodes,fill=white] at ($(pcall)+(+8,0)$)
+{
+1 & c(1)\\
+2 & c(2)\\
+\vdots & \vdots\\
+p & c(p)\\
+};
+
+\draw[arrow](pcall.east)--(kmeans.west) node[midway,sloped,above] {$k$-means};
+
+\node (tittle_particle) at ($(kmeans)+(-0.75,2.5)$) [rotate=90] {particles};
+\node (tittle_class) at ($(kmeans)+(0.64,2.19)$) [rotate=90] {class};
+
+
+\end{tikzpicture}
+
+\caption[Clustering]{The data is projected onto the principal axes, for each $r$ length scale and stacked into one single $\bm{SV}^T$ matrix of principal components. For visualization, the principal components are transposed to have the axes as columns and the particles as rows. The projected data is then clustered, usually with $k$-means. As a result, each particle is assigned to a class.}
+\label{fig:cluster}
+\end{figure}

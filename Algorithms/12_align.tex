@@ -1,0 +1,307 @@
+\subsection{Subtomogram alignment} \label{sec:algo:align}
+
+This goal of this procedure is to find the best transformation (rotation $+$ translation) between each particle and its reference. By convention, the rotation $\bm{R}$ and translation $\bm{T}$ are meant to be applied to the particles to align them into the reference frame.
+
+% Subtomogram alignment is usually performed by angular search. Usually, the reference is masked in real space, rotated and weighted in Fourier space by a missing wedge mask or a sampling function. Then, the 3D Cross-Correlation (CC) is calculated. The position and value at each point in the 3D CC volume describes the similarity of the two volumes. The peak intensity defines the CC score and its position provides the shift.
+
+% This description, often used to describe subtomogram averaging and alignment, is \textit{not} what {\emClarity} is doing. We will describe in detail in the next sections how the alignment procedure in {\emClarity} works, but it is worth presenting the main ideas now to see the global picture:
+
+% The alignment is divided into three main step. First, the reference is aligned to the subtomograms and the position (i.e. translation) of the strongest peak is extracted. Then, this translation estimate is used to align the subtomograms to the reference and the CCC score is calculated. The rotation that gives the highest CCC score is selected. Finally, the reference is aligned once again to the subtomograms, but this time using only the best rotation (and the first translation estimate) and the position of the strongest peak is extracted. This gives us the final translation. The reason why we do this back and forth is mainly because it allows us to consider the particle symmetry are aligning the subtomogram to the reference frame.
+
+\subsubsection{Masks and filters}
+
+The box size is defined as in section \ref{sec:algo:avg:box} and every volume (particles, references, filters and masks) will be padded/cropped to this size.
+\begin{itemize}
+    \item \textbf{Masks}: Every voxel outside of the alignment mask $\bm{M_{ali}}$ is ignored throughout the alignment procedure. $\bm{M_{ali}}$ is defined by the \code{Ali\_mType}, \code{Ali\_mRadius} and \code{Ali\_mCenter} parameters. $\bm{M_{particle}}$ is an ellipsoid of radius equal to \code{particleRadius} and sets the maximum translation allowed, thereby preventing the particles to drift too much from their original position. $\bm{M_{peak}}$ is an optional rectangular mask of radius \code{Peak\_mRadius} used to further restrict the translations.
+    
+    \item \textbf{Filters}: To ignore the information after the current frequency cutoff, the subtomograms are going to be filtered before comparison with the reference. This filter, corresponds to the $\bm{C_{ref}}$ described in equation \ref{eq:cref3d}, but in this case, only the spherical shells and the frequency cutoff $\bm{h_{cut}}$ from the spherical FSC are used, whereas the conical FSCs were used during the subtomogram averaging. Additionally, the ad-hoc Modulation Transfer Function ($\bm{\mathrm{MTF}}$, equation \ref{eq:mtf}) will also be applied before comparison with the reference.
+    
+    \item \textbf{Sampling functions}: The sampling functions of the particles $\bm{w}$ should be already calculated and saved (section \ref{sec:algo:avg:SF3D}). If the box size changed between the averaging and the alignment, the sampling functions are calculated again. The sampling functions are created and saved in the microscope frame, thus we'll refer to them as $\bm{w}_{mic}$. The total sampling functions (i.e. the sampling function of the two half-maps) $\bm{W}$ are created and saved in the reference frame, thus we will refer referred to them as $\bm{W}_{ref}$.
+\end{itemize}
+
+\subsubsection{References}
+
+The references (i.e. the two half-maps) are calculated and saved in the project directory during subtomogram averaging (section \ref{sec:algo:avg}) and are in the reference frame. As such, we will refer to them as $\bm{S}_{ref}$. These are CTF-corrected and filtered. Before aligning the particles to these reconstructions, some pre-processing is done:
+\begin{enumerate}
+    \item \textbf{Center-Of-Mass}: The references $\bm{S}_{ref}$ are masked with $\bm{M}_{ali}$ and their $\bm{M}_{core}$ mask (section \ref{sec:algo:avg:molecular_mask}) is calculated and applied. Then, the $x,\ y,\ z$ center-of-mass (COM) of the two masked $\bm{S}_{ref}$ are calculated and applied to have the center of the box aligned with the COM of the particle averages.
+
+    \item \textbf{Combine low-resolution information}: We assume that the information from the DC-component (i.e. the zero frequency) to the initial resolution cutoff $\bm{h}_{cut}$ are ``shared'' between the two half-maps. As such, this ``shared'' information is averaged and the ``shared'' frequencies of both $\bm{S}_{ref}$ are replaced by this average. The initial resolution cutoff is set to 40\si{\angstrom} by default.
+    % maybe explain a bit more where this 40A comes from.
+\end{enumerate}
+
+\subsubsection{Calculate the translation between a particle and a reference} \label{sec:algo:align:get_translation}
+
+This section can be seen as a function that takes as inputs a subtomogram, $\bm{s}_{mic}$, which is in the microscope frame, a reference, $\bm{S}_{ref}$, which is in the reference frame, the particle's rotation $\bm{R}$ and translation $\bm{T}$. If the reference and the particle are both in the same frame, how do we calculate the translation $\bm{T}_{S\text{-}s}$ between them?
+
+\begin{enumerate}
+    \item \textbf{Get the reference into the microscope frame}: The reference $\bm{S}_{ref}$ is rotated by $\bm{R}^{T}$, translated by $-\bm{T}$, centered and standardized. To emphasize that the reference is now in the microscope frame, we will refer to it as $\bm{S}_{mic}$ from now on.
+    \begin{note}\label{note:ref2mic_frame}By convention, $\bm{T}$ and $\bm{R}$ are meant to be applied to the particles and will switch the particles from the microscope to the reference frame. As such, if we want to align the reference to the microscope frame, we must apply the ``inverse`` transformation, such as $-\bm{T}$ and $\bm{R}^{T}$. In this case, the translations are applied after the rotation.
+    \end{note}
+    
+    \item \textbf{Get the total sampling function into the microscope frame}: The total sampling function $\bm{W}_{ref}$ is rotated by $\bm{R}^{T}$ as well. To emphasize that the total sampling function is now in the microscope frame, we will refer to it as $\bm{W}_{mic}$ from now on.
+    
+    % C_Ref uses the spherical FSC because we're in the microscope frame! Using the conical would've meant rotating C_ref as well.
+    \item \textbf{Calculate the CCC map}: The particle $\bm{s}^{mic}$ is masked with $\bm{M}_{particle}$, filtered with $\bm{C}_{ref}$ and $\bm{\mathrm{MTF}}$, and finally centered and standardized. Then, the CCC map is calculated as follow:
+    \begin{equation}
+        \bm{\mathrm{CCC}}_{map} = 
+        \mathcal{F}^{-1} \left\{
+        \mathcal{F} \{ \bm{s}_{mic} \}\
+        \bm{W}_{mic}\
+        \overline{ \mathcal{F} \{ \bm{S}_{mic} \}} \
+        \bm{w}_{mic}
+        \right\}
+    \end{equation}
+
+    \item \textbf{Further restrict the allowed translation}: If $\bm{M}_{peak}$ is defined, apply it to $\bm{\mathrm{CCC}}_{map}$. This effectively removes every peak outside the allowed region, set by \code{Peak\_mRadius}.
+    % I am not sure this is very useful now. M_particle should already do the job.
+
+    \item \textbf{Get highest peak position}: Extract the $x,y,z$ coordinates of the strongest peak, $\bm{p}_{x,y,z}$. In this case, the origin $(x=y=z=0)$ corresponds to the center of the CCC map. A $7\!\times\!7\!\times\!7$ box is extracted around the peak and we calculate the COM of this box, $\bm{\mathrm{COM}}_{x,y,z}$. The translation $\bm{T}_{S\text{-}s}$ is then defined as $\bm{T}_{S\text{-}s} = \bm{p}_{x,y,z} + \bm{\mathrm{COM}}_{x,y,z}$.
+\end{enumerate}
+
+\subsubsection{Calculate the CCC score between a particle and a reference} \label{sec:algo:align:get_CCC}
+
+This section can be seen as a function that takes as inputs a particle, $\bm{s}_{mic}$, which is in the microscope frame, a reference, $\bm{S}_{ref}$, which is in the reference frame, the particle's rotation $\bm{R}$ and translation $\bm{T}$. If the particle and the reference are both in the same frame, how do we calculate their Constrained Cross-Correlation score, $\bm{\mathrm{CCC}}_{score}$?
+
+\begin{enumerate}
+    \item \textbf{Get the particle into the reference frame}: The particle is translated by $\bm{T}$ and rotated by $\bm{R}$. To increase the SNR of the transformed particle, we also apply its symmetry. To emphasize that the particle is now in the reference frame, we will refer to it as $\bm{s}_{ref}$ from now on.
+
+    \item \textbf{Get the sampling function of the particle into the reference frame}: The same $\bm{R}$ rotation is applied to the sampling function of the particle to correctly represent the original sampling of the subtomogram. To emphasize that the sampling function is now in the reference frame, we will refer to it as $\bm{w}_{ref}$ from now on.
+    \begin{note}As explained in section \myref{sec:algo:avg:SF3D}, {\emClarity} is currently not computing a sampling function per particle, but divides the field of view by 9 strips parallel to the tilt-axis.
+    \end{note}
+    % apply sort of radial weighting depending on the sampling (1/sqrt(bin)).
+
+    \item \textbf{Calculate the CCC score}: The particle $\bm{s}_{ref}$ is masked with $\bm{M}_{ali}$, filtered with $\bm{C}_{ref}$ and $\bm{\mathrm{MTF}}$, and finally centered and standardized. The reference $\bm{S}^{ref}$ is centered and standardized as well. Then, the CCC score is calculated, as follow:
+    \begin{equation}
+        \bm{\mathrm{CCC}}_{score} = \frac{
+        \sum\limits_{q=h,k,l}^{Q}
+            \Re\left(
+            \mathcal{F} {\{ \bm{s}_{ref} \}}_{q}\
+            {[\bm{W}_{ref}]}_{q}\
+            \overline{\mathcal{F} {\{ \bm{S}_{ref} \}}}_{q}\
+            {[\bm{w}_{ref}]}_q
+            \right)
+        }{
+        \sqrt{
+            \sum\limits_{q=h,k,l}^{Q}
+                { \abs[\Big]{ \mathcal{F} {\{ \bm{s}_{ref} \}}_{q}\ {[\bm{W}_{ref}]}_{q} } }^2
+            \times
+            \sum\limits_{q=h,k,l}^{Q}
+                { \abs[\Big]{ \overline{\mathcal{F} {\{ \bm{S}_{ref} \}}}_{q}\ {[\bm{w}_{ref}]}_q } }^2
+                }
+        }
+    \end{equation} % why Re() and not abs()?
+    where $\mathcal{F}\{x\}$ is the fast Fourier transform of $x$. $\Re(x)=a$, where $x$ is a complex number such as $x=a+bi$. $|x|$ is the complex magnitude of the complex number $x$ and is defined as $\sqrt{a^2+b^2}$. $\overline{x}$ is the complex conjugate of $x$.
+\end{enumerate}
+
+\begin{note}Notice that when calculating the CCC scores, the particle is masked with $\bm{M}_{ali}$, whereas the particle is masked with $\bm{M}_{particle}$ when calculating the translation (step 3. section \myref{sec:algo:align:get_translation}). This allows to restrict the translation within the particle, while allowing the surrounding environment (neighbouring particles in a lattice, etc.) to contribute to the alignment.
+\end{note}
+
+\subsubsection{Evaluate the initial alignment} \label{sec:algo:align:eval_init_alignment}
+
+First, we calculate the initial CCC score, $\bm{\mathrm{CCC}}_{init}$, of each particle $\bm{s}$. We do as follow, for each particle $p$:
+
+\begin{enumerate}
+    \item \textbf{Extraction}: The particle $\bm{s}_{p}$ is extracted it from its sub-region tomogram. This step is identical to step 3. from section \ref{sec:algo:avg:subtomo_avg}. As the extraction is in pixel space, any remaining decimals ${[\bm{T}_{orig}]}_p$ from its $x,y,z$ coordinates are saved and will be applied during the transformation, in step 3.
+    
+    \item \textbf{Get the initial rotation}: At this point of the alignment, the rotation of the particle comes from the previous cycle or directly from the picking if it is the first alignment. As such, the rotation is equal to ${[\bm{R}_{init}]}_p = \bm{R}_{n-1,p}$, where $n$ is the current cycle number.
+    
+    \item \textbf{Get the initial translation}: As the particle was just extracted, the only translation attached to the particle is the shifts ${[\bm{T}_{orig}]}_p$ left from the extraction. As such, the translation is equal to ${[\bm{T}_{init}]}_p = {[\bm{T}_{orig}]}_p$.
+    
+    \item \textbf{Get the CCC score}: Using the ${[\bm{R}_{init}]}_{p}$ and ${[\bm{T}_{init}]}_{p}$ defined above, calculate ${[\bm{\mathrm{CCC}}_{init}]}_p$, as described in section \ref{sec:algo:align:get_CCC}.
+\end{enumerate}
+
+Each particle $p$ has its own CCC score. As you'll see in the next section, if we're not able to find a higher CCC score during the angular search, the particle will keep its initial rotation ${[\bm{R}_{init}]}_{p}$ and translation ${[\bm{T}_{init}]}_{p}$.
+
+\subsubsection{Angular search} \label{sec:algo:align:angular_search}
+
+In tomography, the particles are represented as 3D volumes (i.e. subtomograms). As such, we can either rotate the reference into the microscope frame \textit{or} rotate the particle into the reference frame. The later is not possible in SPA and allows us to apply the symmetry of the particle before comparing it with the (symmetrized) reference. The difficulty here is that, the center of symmetry, or in the case of central symmetry, the position of the symmetry axis, is not necessarily correct and any error will greatly damage the particle if the symmetry is applied. To limit this effect, we first rotate the reference into the microscope frame to get a first estimate of the translation and have a better estimate of the position of the symmetry axis. Then, using this translation, we align the particle to reference to get the CCC score.
+
+The in- and out-of-plane angles $[\Theta_{out},\ \Delta_{out}, \Theta_{in},\ \Delta_{in}]$ registered in \code{Raw\_angleSearch} are converted into a set of $r \times 3$ Euler angles ($\phi_{r},\ \theta_{r},\ \psi_{r}$). These rotations are finally converted into $r$ rotation matrices $\bm{R}_{r}$. For each particle $p$ and for each rotation $r$:
+
+\begin{enumerate}
+    \item \textbf{Get the current rotation}: The rotation of the particle is defined as ${[\bm{R}_{search}]}_{p,r} = {[\bm{R}_{init}]}_p \bm{R}_{r}$. Remember, ${[\bm{R}_{init}]}_p = \bm{R}_{n\text{-}1,p}$.
+    
+    \item \textbf{Get the current translation}: The current translation of the particle didn't change since the last cycle, it is still equal to  ${[\bm{T}_{search}]}_{p,r} = {[\bm{T}_{init}]}_{p} = {[\bm{T}_{orig}]}_p$.
+    
+    \item \textbf{Update the translation}: Using the ${[\bm{R}_{search}]}_{p,r}$ and ${[\bm{T}_{search}]}_{p,r}$ defined above, we calculate ${[\bm{T}_{S\text{-}s}]}_{p,r}$, as described in section \ref{sec:algo:align:get_translation}. The new translation is defined as ${[\bm{T}_{search}]}_{p,r} = {[\bm{T}_{init}]}_{p,r} + {[\bm{T}_{S\text{-}s}]}_{p,r}$.
+    
+    \item \textbf{Get the CCC score}: Using the ${[\bm{R}_{search}]}_{p,r}$ and ${[\bm{T}_{search}]}_{p,r}$ defined above, we calculate the CCC score of this transformation, ${[\bm{\mathrm{CCC}}_{search}]}_{p,r}$, as described in section \ref{sec:algo:align:get_CCC}.
+    
+\end{enumerate}
+
+We now have, for each particle $\bm{s}_{p}$, the initial score ${[\bm{\mathrm{CCC}}_{init}]}_{p}$ and a set of ${[\bm{\mathrm{CCC}}_{search}]}_{p,r}$ score. The maximal ${[\bm{\mathrm{CCC}}_{search}]}_{p,r}$ score is defined as ${[\bm{\mathrm{CCC}}_{search}]}_{p} = \max_{r}({[\bm{\mathrm{CCC}}_{search}]}_{p,r})$ and the corresponding rotation and translation are referred to as ${[\bm{R}_{search}]}_p$ and ${[\bm{T}_{search}]}_p$.
+
+The current best score is defined as follow:
+\begin{equation}
+    {[\bm{\mathrm{CCC}}_{best}]}_{p} = \max \left( {[\bm{\mathrm{CCC}}_{init}]}_{p}, {[\bm{\mathrm{CCC}}_{search}]}_{p} \right)
+\end{equation}
+As such, if ${[\bm{\mathrm{CCC}}_{init}]}_{p} < {[\bm{\mathrm{CCC}}_{search}]}_{p}$, the particle is assigned to a new transformation, defined by the rotation ${[\bm{R}_{best}]}_p = {[\bm{R}_{search}]}_p$ and the translation ${[\bm{T}_{best}]}_p = {[\bm{T}_{search}]}_p$. Otherwise, the particle keeps its original transformation, ${[\bm{R}_{best}]}_p = {[\bm{R}_{init}]}_p$ and ${[\bm{T}_{best}]}_p = {[\bm{T}_{init}]}_p$.
+
+\subsubsection{Angular search refinement}
+
+If the angular search goes out of plane, it is refined, using a finer sampling, around the current best rotation and best translation. To do so, a new set of $r' \times 3$ Euler angles is calculated and transformed into $r'$ rotation matrices $\bm{R}_{p,r'}$. Then, for each particle $p$ and for each rotation $r'$:
+
+\begin{enumerate}
+    \item \textbf{Get the current rotation}: The rotation of the particle is defined as ${[\bm{R}_{search'}]}_{p,r'} = {[\bm{R}_{best}]}_p \bm{R}_{r'}$.
+    % From what I remember, we define new rotations and apply it to the original rotation, so it should be R_init * R_r', but I think it is more meaningful to say that we "look around" the current best rotation (=refinement). In any case, it is equivalent to what we do in practice...
+
+    \item \textbf{Update the translation}: Using the ${[\bm{R}_{search'}]}_{p,r'}$ and ${[\bm{T}_{best}]}_{p}$ defined above, we calculate ${[\bm{T}_{S\text{-}s}]}_{p,r'}$, as described in section \ref{sec:algo:align:get_translation}. The new translation is updated, such as ${[\bm{T}_{search'}]}_{p,r'} = {[\bm{T}_{best}]}_{p} + {[\bm{T}_{S\text{-}s}]}_{p,r'}$.
+    
+    \item \textbf{Get the CCC score}: Using the ${[\bm{R}_{search'}]}_{p,r'}$ and ${[\bm{T}_{search'}]}_{p,r'}$ defined above, we calculate the CCC score of this transformation, ${[\bm{\mathrm{CCC}}_{search'}]}_{p,r'}$, as described in section \ref{sec:algo:align:get_CCC}.
+\end{enumerate}
+
+Similarly to the first angular search, we now have for each particle $\bm{s}_p$, the current best score ${[\bm{\mathrm{CCC}}_{best}]}_{p}$ calculated at the previous section and a set of ${[\bm{\mathrm{CCC}}_{search'}]}_{p,r'}$. The highest ${[\bm{\mathrm{CCC}}_{search'}]}_{p,r'}$ score is defined as ${[\bm{\mathrm{CCC}}_{search'}]}_{p} = \max_{r'}({[\bm{\mathrm{CCC}}_{search'}]}_{p,r'})$ and the corresponding rotation and translation are referred as ${[\bm{R}_{search'}]}_p$ and ${[\bm{T}_{search'}]}_p$.
+
+The current best score is defined as follow:
+\begin{equation}
+    {[\bm{\mathrm{CCC}}_{best'}]}_{p} = \max \left( {[\bm{\mathrm{CCC}}_{best}]}_{p}, {[\bm{\mathrm{CCC}}_{search'}]}_{p} \right)
+\end{equation}
+As such, if ${[\bm{\mathrm{CCC}}_{best}]}_{p} < {[\bm{\mathrm{CCC}}_{search'}]}_{p}$, the current best estimate is updated and the particle is assigned to a new transformation, defined by the rotation ${[\bm{R}_{best'}]}_p = {[\bm{R}_{search'}]}_p$ and the translation ${[\bm{T}_{best'}]}_p = {[\bm{T}_{search'}]}_p$. Otherwise, the particle keeps its transformation, ${[\bm{R}_{best'}]}_p = {[\bm{R}_{best}]}_p$ and ${[\bm{T}_{best'}]}_p = {[\bm{T}_{best}]}_p$.
+
+\subsubsection{Final translation and update}
+
+Finally, a final translation ${[\bm{T}_{S\text{-}s}]}_p$ will be calculated as described in section \ref{sec:algo:align:get_translation}, using the final rotation ${[\bm{R}_{final}]}_p = {[\bm{R}_{best}]}_p$ (or if there was a refinement, ${[\bm{R}_{final}]}_p = {[\bm{R}_{best'}]}_p$) and current best translation ${[\bm{T}_{best}]}_p$ (or ${[\bm{T}_{best'}]}_p$). The final translation is defined as ${[\bm{T}_{final}]}_p = {[\bm{T}_{best}]}_p + {[\bm{T}_{S\text{-}s}]}_p$ (or ${[\bm{T}_{final}]}_p = {[\bm{T}_{best'}]}_p + {[\bm{T}_{S\text{-}s}]}_p$)
+
+Once the alignment is over, the particles are updated with their new rotation and translation such as:
+\begin{itemize}
+    \item \textbf{New rotation}: The new rotation is simply defined as $\bm{R}_{n,p} = {[\bm{R}_{final}]}_p$
+    \item \textbf{New translation}: ${[\bm{T}_{final}]}_p$ contains the original translation ${[\bm{T}_{orig}]}_p$ resulting from the extraction. As the original $x,y,z$ coordinates of the particle $\bm{T}_{n\text{-}1,p}$ implicitly contains ${[\bm{T}_{orig}]}_p$, we update the coordinates such as $\bm{T}_{n,p} = \bm{T}_{n\text{-}1,p} + {[\bm{T}_{final}]}_p - {[\bm{T}_{orig}]}_p$.
+\end{itemize}
+
+
+
+
+
+
+
+%% WORKFLOW
+
+%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%% PREPARE MASKED REFERENCES
+%%%%%%%%%%%%%%%%%%
+
+% Get parameters and metadata of the current state of alignment.
+% Define box size like in avg.
+% assign a given sub-region to a GPU. Each GPU as a queue.
+
+% load the references.
+
+% Calculate the COM:
+%   - create comMask, which centers on the region to align (Ali_mRadius).
+%   - mask the reconstruction with comMask and calculate the COM with EMC_maskReference{fsc=true}.
+%   - shift the reference to have the COM at the center of the reference.
+%   - Save in refIMG
+
+% The SF3D is normalized, padded to sizeCalc. Save in refWgtROT. ifftshift and save in refWGT.
+
+% Combine low-resolution information:
+%   - pad the 2 refs to 512x512, double precision
+%   - sharedInfo = sum of the two padded fft (weight 0.5 for both), but only up to current resolution cutoff (maxGoldStandard).
+%   - then add specific info of the reconstruction after the cutoff: sharedInfo + fft after cutoff. NOTE: of course, this is done for both half-maps.
+%   - switch back to real space and reverse the padding.
+%   - Update refIMG
+
+% eraseMask <=> if Peak_mRadius
+%   - calculate a rectangular mask, where 1 is within ceil(2*eraseMaskRadius) and 0 is from there up to edges (sizeCalc).
+
+% volMask
+%   - Ali_mRadius mask.
+
+% Bandpass filter: used to remove information after the FSC cutoff (use the spherical FSC only).
+%   - Extract the FSC information from masterTM.cycleNumber.fitFSC.Raw1;
+%   - bandpassFilt{1] = BH_multi_cRef(fscInfo, radialGrid)
+%       - extra the shellFSC, replace neg value with 0, and fit polynomial curve. This is on the spherical FSC only.
+%       - extract the forceMask (gaussian fall-off at the cutoff).
+%       - cRef = fit(osX, sqrt( abs( 2 * fitFSC(osX) / (1+fitFSC(osX))) ) .* adHocMTF .* forceMask, 'cubicSpline');
+%       - bandpassFilt{1] = cRefFilter + iConeMask .* reshape(cRef(radialGrid),size(radialGrid));  
+%   - wdgBinary = bandpassFilt{1} > 0.01
+
+% Save final volumes (for each half-set)
+%   - ref_FT1 = Apply volMask to refIMG, and normalize within the alignment mask. Set mean and std. Finally take the conjugate! 
+%   - ref_FT2 = same but with peakMask, which depends on the particleRadius. Here it is not the conjugate.
+
+%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%% ANGULAR SEARCH
+%%%%%%%%%%%%%%%%%%
+
+% Calculate all of the angles [phi, theta, psi-phi].
+
+%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%% SAMPLING FUNCTION
+%%%%%%%%%%%%%%%%%%
+
+% Check that the sampling functions exists for every tilt-series at this binning, otherwise, calculate them.
+
+%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%% ALIGNMENT
+%%%%%%%%%%%%%%%%%%
+
+% For each process (GPU), start the alignment only if nothing found in alignResume.
+% Load the sampling functions for that sub-region (actually the same for the entire stack).
+%   - apply sort of radial weighting depending on the sampling (1/sqrt(bin)).
+% Get ready to extract the particle by looking at the dimensions and get list of particles.
+
+% For every valid particle:
+%   - 1) get the sampling function of that particle.
+
+%   - 2) get coordinates and angles, and extract it similarly as in avg (BH_isWindowValid).
+%       - If the particle is fully within the sub-region, then it's fine, otherwise mark it as not valid.
+%       - Load this subtomogram into device memory and pad if necessary to take into account missing voxels in alignment mask.
+
+%   - 3) Get the initial CCC score:
+%       - rotate the particle with its current rotation (within alignment mask), apply symmetry if any.
+%       - rotate its SF3D with the same rotation, within bandpassFilt.
+%       - apply the mask to the rotated particle, mask it with alignment mask, bandpass filter with bandpassFilt and normalize within alignment mask.
+%       - calculate the initial CCC score with BH_multi_xcf_Rotational (see below) and store it in cccInitial = {iref (1), particleIDX, 0, 0, 0, iCCC, 1, 0}.
+
+%   - 3) For every theta, every phi (azimuth) and every psi:
+%       - translation estimate:
+%           - a) rotate the reference in the particle frame, as well as its SF3D. The rotation is only within the particleMask and bandpassFilt, respectively.
+%                Apply the remaining shifts from the particle coordinates (during extraction you round to be in pixel space).
+%           - b) Apply the particleMask to the rotated ref_FT2 again and normalize within the mask.
+%           - c) Apply the particleMask to the particle, bandpass filter with bandpassFilt.
+%           - d) extract the translation with BH_multi_xcf_Translational:
+%               - i) apply the total SF3D to the (unrotated) particle.
+%               - ii) the particle's SF3D to the conjugate of the rotated reference ref_FT2.
+%               - iii) multiply both of them in Fourier space, ifft and fftshift to have the "centered" CCCmap.
+%               - iv) for the COM, set the min of CCCmap to 0.
+%               - v) extract the x, y and z coordinates of the strongest peak.
+%               - vi) calculate the COM around this peak (7x7x7 box) and add it to the peak coordinate.
+%               - vii) Round this updated peak coordinate and repeat the step vi).
+%           - e) store in cccStorageTrans: {iref (1), particleIDX, phi, theta, psi-phi, 0, 0, coord + translation}.
+%       - CCC score:
+%           - a) using the first estimate of the translation in cccStorageTrans, shift and rotation the particle. Apply any symmetry.
+%           - b) rotate the particle's SF3D within bandpassFilt.
+%           - c) apply the mask to the rotated particle, mask it with alignment mask, bandpass filter with bandpassFilt and normalize within alignment mask.
+%           - d) calculate the CCC score with BH_multi_xcf_Rotational:
+%               - i) numerator = real( rotPart * wdgRef * ref_FT1 * wgdMask ). NOTE: ref_FT1 is already the conjugate.
+%               - ii) denominator = sum(abs(rotPart * wdgRef)^2) * sum(abs(REF_FT1 * wdgMask)^2)
+%               - iii) CCC = sum(numerator) / sqrt(denominator)
+%           - e) store in cccStorage2 (just an update of cccStorageTrans): {iref (1), particleIDX, phi, theta, psi-phi, CCC, 1, translation}.
+
+%   4) If the initial CCC score in cccInitial is greater than the highest newly calculated CCC score in cccStorage2, don't update and use old rotation and no shift.
+%      The sorted, and updated with cccInitial, cccStorage2 is saved in cccPreRefineSort.
+
+%   5) If refine (out of plane search):
+%       - Extract the angles from cccPreRefineSort and set finer increments: theta = psi = 2 times smaller, phi = 4 times smaller.
+%       - If theta, i.e. if in plane, reduce the psi increment even more: psiInc = floor(sqrt(thetaInc))
+%       - Set new angular search (refine around the best angles).
+%       - for each phi, theta and psi: 
+%           - Same as first angular search but for the translation estimate use the translation estimate from the best rotation.
+
+%   6) Get the final translation using the current best rotation and best translation estimate.
+%       - Get the rotation and translation and apply it to ref_FT2. Apply the rotation to its SF3D.
+%       - Mask the reference with particle mask and normalize within the mask.
+%       - Mask the unrotated particle with particle mask, bandpassFilt, and normalize with mask.
+%       - calculate the peakCoord with BH_multi_xcf_Translational and update the translation estimate with it.
+%       - Subtract shitVAL (shift used for extraction) to the final translation.
+
+%   7) Print final result: CCC, rotation, shift; before and after alignment (+refinement)
+
+% Once the alignment is done for every particle of a given sub-region, save the results (cccStorageBest) in alignResume.
+
+% Save the new rotations and coordinates in the metadata and update also class for particles that are not valid.
+
+
+
+

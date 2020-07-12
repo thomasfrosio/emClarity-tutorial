@@ -1,0 +1,189 @@
+\ProvidesPackage{tutorial}
+
+% Packages:
+\usepackage[nottoc,numbib]{tocbibind}
+\usepackage{fancyhdr}
+\usepackage[latin1]{inputenc}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}
+\DeclarePairedDelimiterX{\norm}[1]{\lVert}{\rVert}{#1}
+\usepackage{xspace}
+\usepackage{bm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{dashrule}  % for making dashed line across page
+\usepackage{soul}  % for highlighting text
+\usepackage[hmargin=2cm,vmargin=2.5cm]{geometry}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{epsfig}
+\usepackage{framed}
+\usepackage{textcomp}
+\usepackage{color}
+\usepackage{booktabs}
+\usepackage{pdflscape}  % for landscape pages
+\usepackage[per-mode=symbol]{siunitx}
+\usepackage{multirow}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{makecell}  % to make new lines in tables
+\usepackage{changepage}  % easier for marging, with adjustwidth
+\usepackage{enumerate}
+\usepackage{microtype}
+\usepackage[htt]{hyphenat}  % enable hyphenation in typewriter text
+\PassOptionsToPackage{hyphens}{url}
+\usepackage{hyperref}  % for urls: \url{https....}
+\usepackage[T1]{fontenc}  % font encoding for underscore and such:\_, ae, xxx
+\usepackage{caption}
+\usepackage{subcaption}  % to make subfigure
+\renewcommand{\familydefault}{\sfdefault}  % sans-serif
+
+\usepackage[usenames,dvipsnames]{pstricks}
+\usepackage{listings} % for pretty code
+
+\usepackage{longtable}
+\usepackage{hhline}
+
+% tikz:
+\usepackage{tikz} % for pretty flowcharts
+\usetikzlibrary{shapes.geometric, decorations.pathreplacing, arrows, calc, matrix, positioning}
+\tikzstyle{arrow} = [thick,->,>=stealth, rounded corners]
+\tikzstyle{arrow2} = [thick,->,>=stealth, rounded corners, draw=gray!30]
+\tikzstyle{arrow3} = [->,>=stealth, rounded corners]
+\tikzstyle{line} = [thick, rounded corners]
+\tikzstyle{basic} = [rectangle, rounded corners, minimum width=4.5cm, minimum height=1cm,text centered, draw=black, font=\footnotesize]
+\tikzstyle{job} = [basic, fill = white]
+\tikzstyle{chimera} = [basic, fill = white, fill=gray!30, draw=gray!30]
+\tikzstyle{durchsichtig} = [rectangle, minimum width=4.5cm, minimum height=1cm]
+\tikzstyle{failed} = [basic, fill=red!30]
+
+% SI units:
+\usepackage[version=4]{mhchem}
+\DeclareSIUnit{\molar}{M}
+\DeclareSIUnit{\calorie}{cal}
+\newcommand{\angstrom}{\textup{\AA}}
+
+% Figures:
+\graphicspath{{Figures/}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Style
+\pagestyle{fancy}
+\setlength\parindent{0in}
+\setlength\parskip{0.1in}
+\setlength\headheight{15pt}
+
+% Colours
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{myblue}{rgb}{0.0, 0.18, 0.65}
+
+\colorlet{myred}{red!50!black}
+\definecolor{lightgray}{gray}{0.95}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=myred,
+    filecolor=myred,
+    urlcolor=myred,
+    citebordercolor=black,
+    filebordercolor=black,
+    linkbordercolor=myred,
+    citecolor=myred
+}
+\urlstyle{same}
+
+% Header|Footer
+\fancyhf{}
+\lhead{emClarity tutorial}
+\rhead{\nouppercase\leftmark}
+\rfoot{Page \thepage}
+
+% Ref
+\newcommand{\myref}[1]{\textbf{\ref{#1}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%% NEW ENVIRONMENTS %%%%%%%%%%%%
+\newenvironment{lines}{
+\begin{itemize}
+\renewcommand\labelitemi{--}
+}{\end{itemize}}
+
+\newenvironment{numlists}{
+\begin{enumerate}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{enumerate}}
+
+% Tips and Notes
+\newcounter{tip}
+\newenvironment{tip}
+    {\begin{adjustwidth}{0.5cm}{0.5cm}
+     \refstepcounter{tip}
+     \bgroup\color{myred}
+     \textit\bgroup
+     {\textbf{Tip~\thetip:}}
+    }{\egroup\egroup\end{adjustwidth}}
+
+\newcounter{note}
+\newenvironment{note}
+    {\begin{adjustwidth}{0.5cm}{0.5cm}
+     \refstepcounter{note}
+     \bgroup\color{myred}
+     \textit\bgroup
+     {\textbf{Note~\thenote:}}
+    }{\egroup\egroup\end{adjustwidth}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% Insert code:
+\sethlcolor{lightgray}
+\def\resetstyle#1{{\normalsize\rm\color[rgb]{0,0,0}\noindent#1}}
+\newcommand{\code}[1]{{\resetstyle{\texttt{\hl{#1}}}}}
+
+% Code settings
+\lstset{ 
+  backgroundcolor=\color{lightgray},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}; should come as last argument
+  basicstyle=\ttfamily,   % the size of the fonts that are used for the code
+  breakatwhitespace=false,             % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                     % sets automatic line breaking
+  belowskip=-0.7cm,                    % to make sure the space below is similar to the space above
+  captionpos=b,                        % sets the caption-position to bottom
+  commentstyle=\color{mygreen},        % comment style
+  deletekeywords={...},                % if you want to delete keywords from the given language
+  escapeinside={\%*}{*)},              % if you want to add LaTeX within your code
+  %extendedchars=true,                 % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  %frame=single,	                   % adds a frame around the code
+  keepspaces=true,                     % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{myred},          % keyword style
+  language=bash,                       % the language of the code
+  morekeywords={*,...,emClarity,>>},   % if you want to add more keywords to the set
+  numbers=none,                        % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                       % how far the line-numbers are from the code
+  numberstyle=\tiny\color{mygray},     % the style that is used for the line-numbers
+  rulecolor=\color{black},             % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                    % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,              % underline spaces within strings only
+  showtabs=false,                      % show tabs within strings adding particular underscores
+  stepnumber=2,                        % the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{black},           % string literal style
+  tabsize=4,	                       % sets default tabsize to 2 spaces
+  title=\lstname                       % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+
+% Shortcuts
+\def\CC{{C\nolinebreak[4]\hspace{-.05em}\raisebox{.4ex}{\tiny\bf ++}}}
+\newcommand{\MATLAB}{\textsc{Matlab}\xspace}
+\newcommand{\emClarity}{\href{https://github.com/bHimes/emClarity}{emClarity}}
+\newcommand{\IMOD}{\href{https://bio3d.colorado.edu/imod/}{IMOD}}
+\newcommand{\ETomo}{\href{https://bio3d.colorado.edu/imod/doc/etomoTutorial.html}{ETomo}}
+\newcommand{\tilt}{\href{https://bio3d.colorado.edu/imod/doc/man/tilt.html}{tilt}}
+\newcommand{\tiltalign}{\href{https://bio3d.colorado.edu/imod/doc/man/tiltalign.html}{tiltalign}}
+\newcommand{\threedmod}{\href{https://bio3d.colorado.edu/imod/doc/3dmodguide.html}{3dmod}}
+\newcommand{\Chimera}{\href{https://www.cgl.ucsf.edu/chimera/}{Chimera}}
+\newcommand{\cisTEM}{\href{https://cistem.org/software}{cisTEM}}

@@ -1,0 +1,26 @@
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[c]{| l | p{35mm} || l | p{35mm} || l | p{35mm} |}
+\captionsetup{labelfont=bf}
+\caption{\code{fixedStacks/ctf/<prefix>\_ali*\_ctf.tlt}} \label{tab:ctf_tlt}\\
+% I need to check the diff between first and last column. It is useful when removing images.
+
+\hline
+\textbf{C} & \textbf{Description} & \textbf{C} & \textbf{Description} & \textbf{C} & \textbf{Description}\\
+\hline
+1 & index $i$                   & 9 & $\bm{R}_{1,2,i}$               & 17 & \code{Cs}\\
+\hline
+2 & $\bm{T}_{x,i}$ (in pixels)  & 10 & $\bm{R}_{2,2,i}$              & 18 & \code{WAVELENGTH}\\
+\hline
+3 & $\bm{T}_{y,i}$ (in pixels)  & 11 & $i^{th}$ post-exposure       & 19 & \code{AMPCONT}\\
+\hline
+4 & $\bm{\alpha}_i$             & 12 & ${[\bm{\Delta\mathrm{z}}_{ast}]}_i$    & 20 & pixels in X\\
+\hline
+5 & \cellcolor{lightgray}empty  & 13 & ${[\bm{\phi}_{ast}]}_i$                & 21 & pixels in Y\\
+\hline
+6 & 90\textdegree               & 14 & \cellcolor{lightgray}empty   & 22 & sections Z\\
+\hline
+7 & $\bm{R}_{1,1,i}$             & 15 & $\bm{\mathrm{z}}_i$          & 23 & ?\\
+\hline
+8 & $\bm{R}_{2,1,i}$             & 16 & \code{PIXEL\_SIZE}           & 24 & \cellcolor{lightgray}\\
+\hline
+\end{longtable}

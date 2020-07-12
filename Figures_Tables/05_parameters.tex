@@ -1,0 +1,35 @@
+% Parameters for autoAlign
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{| l || p{90mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{autoAlign} parameters]{\code{autoAlign} parameters. Your parameter file should have the following parameters.\\ \textcolor{myred}{\textbf{*}} indicates the required parameters. The other parameters are optional.}\\
+
+\hline
+
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meters per pixel (e.g. 1.8e-10). Should match the header of the tilt-series.\\
+
+-- \code{beadDiameter}\textcolor{myred}{\textbf{*}} & Bead diameter in meters (e.g. 10e-9). If 0, the beads are ignored during the alignment, but the \code{.erase} file is still generated using \href{https://bio3d.colorado.edu/imod/betaDoc/man/findbeads3d.html}{findbeads3d} with \code{-BeadSize}=10.5nm.\\
+
+-- \code{autoAli\_max\_resolution} & Low-pass cutoff, in $\si{\angstrom}$, used in alignment. An additional median filter is applied to the images before alignment. The filtered series are only used for alignment. Default=18\\
+
+-- \code{autoAli\_min\_sampling\_rate} & Maximum pixel size used for alignment, in $\si{\angstrom}$ per pixel. If you have a pixel size of 2, then the alignment will start at bin 5 using the default. Default=10.\\
+
+-- \code{autoAli\_max\_sampling\_rate} & Minimum pixel size used for alignment, in $\si{\angstrom}$ per pixel. If you have a pixel size of 2, then the alignment will end at bin 2 using the default. Default=3.\\
+
+-- \code{autoAli\_iterations\_per\_bin} & The number of patch tracking iterations, for each bin. Default=3. \\
+
+-- \code{autoAli\_n\_iters\_no\_rotation} & The number of patch tracking iterations, for each bin, before activating local alignments. Default=3.\\
+
+-- \code{autoAli\_patch\_size\_factor} & Sets the size of the patches used for patch tracking. Making this larger will result in more patches, and more local areas in later iterations, but may also decrease accuracy. Default=4\\ % SizeOfPatchesXandY = [nX,nY]/(bin*factor)
+
+-- \code{autoAli\_patch\_tracking\_border} & Number of pixels to trim off each edge in X and in Y. Corresponds to \code{-BordersInXandY} from \href{https://bio3d.colorado.edu/imod/doc/man/tiltxcorr.html}{tiltxcorr}. Default=64.\\
+
+-- \code{autoAli\_patch\_overlap} & Fractional overlap in X and Y between patches that are tracked by correlation. This influences the number of patches. Corresponds to \code{-OverlapOfPatchesXandY} from \href{https://bio3d.colorado.edu/imod/doc/man/tiltxcorr.html}{tiltxcorr}. Default=0.5.\\
+
+-- \code{autoAli\_max\_shift\_in\_angstroms} & Maximum shifts allowed, in $\si{\angstrom}$, for the patch tracking alignment. Default=40.\\
+
+-- \code{autoAli\_max\_shift\_factor} & The maximum shifts allowed are progressively reduced with the iterations $i$, such as \footnote{$\code{int}( \code{autoAli\_max\_shift\_in\_angstroms} / i^{\code{autoAli\_max\_shift\_factor}} ) + 1$}. Default=1.\\
+
+-- \code{autoAli\_refine\_on\_beads} & Whether or not the patch tracking alignment should be refined using the gold beads. This refinement makes the alignment significantly slower, but can substantially improve the quality of the alignment. This refinement is automatically turned-off if the number of beads detected is less than 5 and local alignments are only activated if there is more than 10 beads. Default=false.\\
+\hline
+\end{longtable}

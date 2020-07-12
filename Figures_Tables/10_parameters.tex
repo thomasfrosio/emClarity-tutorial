@@ -1,0 +1,36 @@
+% Parameters for ctf 3d
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{| l || p{115.5mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{ctf 3d} parameters]{\code{ctf 3d} parameters. Your parameter file should have the following parameters.\\ \textcolor{myred}{\textbf{*}} indicates the required parameters, \textcolor{blue}{\textbf{*}} indicates expert parameters. Expert parameters should not be changed except if you know what you are doing. The other parameters are optional.}\\
+
+
+%% Parameters:
+% flgDampenAliasedFrequencies (default=0)
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Microscope settings}}\\
+\hline
+
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+
+-- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Binning factor (1 means no binning) of the output reconstruction.\\
+
+% CTF correction
+\hline
+\multicolumn{2}{|c|}{\textbf{CTF correction}}\\
+\hline
+
+-- \code{useSurfaceFit}\textcolor{blue}{\textbf{*}} & Whether or not the spatial model should be calculated as a function of $x,\ y$ coordinates. If 0, the spatial model is a plane (constant center-of-mass). See section \ref{sec:algo:ctf_3d:spatial_model} for more details.\\
+
+-- \code{flg2dCTF}\textcolor{blue}{\textbf{*}} & Whether or not the CTF correction should correct for the defocus gradients along the electron beam (thickness of the specimen). If 1, only one $z$ section is used. See section \ref{sec:algo:ctf_3d:defocus_step} for more details.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Exposure filter}}\\
+\hline
+
+-- \code{applyExposureFilter} & Whether or not the exposure filter should be applied. If you turn it off, make sure it is turned-off during subtomogram averaging as well.\\
+
+\hline
+\end{longtable}
+

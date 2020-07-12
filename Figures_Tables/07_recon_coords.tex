@@ -1,0 +1,22 @@
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[r]{| c | l || p{110mm} |}
+\captionsetup{labelfont=bf}
+\caption{\code{recon/<prefix>\_recon.coords}} \label{tab:recon_coords}\\
+
+\hline
+\textbf{Line} & {\tilt} \textbf{parameter} & \textbf{Description}\\
+\hline
+1 & \cellcolor{lightgray} & \code{<prefix>}; stack prefix.\\
+\hline
+2 & \cellcolor{lightgray} & Number of sub-regions within this stack.\\
+\hline
+3 & \code{WIDTH} & Width in X of the first sub-region, in pixel.\\
+4 & \code{SLICE} 1 & Starting Y coordinate of the first sub-region. Starts from 0.\\
+5 & \code{SLICE} 2 & Ending Y coordinate of the first sub-region. Starts from 0.\\
+6 & \code{THICKNESS} & Thickness in Z of the first sub-region, in pixels.\\
+7 & \code{SHIFT} 1 & Shift in X the reconstructed slice, in pixel. If it is positive, the slice will be shifted to the right and the output, the first sub-region, will contain the left part of the whole potentially reconstructable area.\\
+8 & \code{SHIFT} 2 & Shift in Z the reconstructed slice, in pixel. If it is positive, the slice is shifted upward.\\
+\hline
+... & ... & Same as line 3 to 8, but for the next sub-regions, if any.\\
+\hline
+\end{longtable}

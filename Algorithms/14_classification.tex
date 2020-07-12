@@ -1,0 +1,171 @@
+\subsection{Subtomogram classification}
+
+The heterogeneity of the data-set can be analysed by comparing individual particles with the current references. This analysis can be focused to some specific features, i.e. resolutions bands, like $\alpha$-helices, small protein domains, etc. Briefly, difference maps are calculated between each particle and the references, for each resolution bands. These maps are then analysed by Principal Component Analysis (PCA), using Singular Value Decomposition (SVD). Once the difference maps are reduced in dimensionality and described by some principal axes, they can be clustered with $k$-means or other clustering algorithms. As a result, each subtomogram is assigned to a class and a subtomogram average can be generated for each class. We will detail this entire process in the following sections.
+
+Usually, PCA is calculated on the covariance or correlation matrix of the data. These are quite popular in tomography because we can consider the missing wedge of the particles while calculating these matrices, using constrained cross-correlation. SVD allows us to perform a PCA directly on the data, but we still need to take into account that each particle has an incomplete sampling. To solve this problem, we are going to calculate difference maps.
+
+%Multiple copies of the objects of interest can be extracted from tomograms. As for SPA, but in 3D, it is then possible to align and average these subtomograms to generate reconstructions with improved resolution. Further characterization can be done via statistical methods (classification algorithms) allowing to describe the subtomogram population based on physical differences. This is subtomogram averaging and classification. Compared to SPA, CET collects more information per object of interest \cite{mcewen_1995}, making each particle exists as a unique 3D reconstruction, allowing for a direct analysis of the 3D heterogeneity of the subtomograms.
+
+%To correct for differences in sampling between the reference and an individual particle, the current subtomogram average is distorted by the sampling function it is being compared to. This effectively estimates what the average particle should look like at that subtomogram position, allowing to only compare meaningful differences. The dimensionality of these differences is reduced by principal component analysis, using Singular Value Decomposition (SVD). Features of a given length scale (e.g. $\alpha$-helices, small protein domains, etc.) can be focused on and considered simultaneously by band-pass filtering the reconstructions and computing the SVD for each length scale. The singular vectors (i.e. the principal axes) describing the greatest variance for each length scale are selected and used to project the data (i.e. the principal components). Then, the principal components are clustered with $k$-means or other clustering algorithms. Finally, once every subtomogram is assigned to a class, we can reconstruct the subtomogram average for each class.
+
+\subsubsection{Combine the half-maps} \label{sec:algo:classification:combine_maps}
+
+First, we need to prepare the reference to which the data-set is being compared to; what we are going to classify is the difference between the particles $\bm{s}$ and this reference. With the goal-standard approach, we have two half-maps, $\bm{S}_1$ and $\bm{S}_2$. For classification, these two references are aligned by spline interpolation, using the rotation $\bm{R}_{gold}$ and translation $\bm{T}_{gold}$ calculated in section \ref{sec:algo:avg:fsc}, and averaged into one unique reference, simply referred as $\bm{S}$. Of course, this alignment is not persistent, so that extracted class averages are still independent half-sets.
+
+\begin{note}The classification can be performed at a different sampling than the half-maps, hence the two distinct parameters \code{Cls\_samplingRate} and \code{Ali\_samplingRate}. In this case, the reference $\bm{S}$ is re-scaled to the desired pixel size, using linear interpolation.
+\end{note}
+
+\subsubsection{Resolution bands} \label{sec:algo:classification:resolution_bands}
+
+As mentioned previously, we can restrict the analysis of the physical differences between the data-set and the reference to some $r$ specific length scales, also referred as resolution bands or features. These resolution bands are controlled by the \code{pcaScaleSpace} entry and we refer to them as $\bm{L}_r$. As we will see in more detail, the PCA is calculated for each one of these length scales. Importantly, the clustering is only calculated once and considers each length scale simultaneously to provide a richer description of the feature space.
+
+First, we can exclude from the analysis most of the background by calculating a molecular mask $\bm{M}_{mol}$ of $\bm{S}$, as described in \ref{sec:algo:avg:molecular_mask}. The \code{Cls\_mType}, \code{Cls\_mRadius} and \code{Cls\_mCenter} parameters are used to a compute soft-edged shape mask, $\bm{M}_{shape}$. In order to constrain the analysis to the desired region, this mask is applied to the molecular mask $\bm{M}_{mol}$. This mask is saved as \code{<prefix>\_pcaVolMask.mrc}.
+
+% The reference is then masked with $\bm{M}_{mol}$ and center and standardized.
+% Then, for each resolution band $\bm{L}_{r}$, the masked reference is filtered by either a band-pass filter or a low-pass filter:
+
+Then, for each resolution band $r$,  either a band-pass filter or a low-pass filter $\bm{W}_r$ is prepared.
+\begin{itemize}
+    \item \textbf{Low-pass filters}: By default, low-pass filters are used and includes frequencies from 400\si{\angstrom} to $(0.9 \times \bm{L}_{r})$\si{\angstrom}. These filters do not define ``resolution bands'' per say and most frequencies will be shared in the resulting filtered references $\bm{S}_r$, but they have produced good results nonetheless.
+    \begin{note}As often, frequencies before 400\si{\angstrom} are removed to center the reference and remove large densities gradients.\end{note}
+    % with the reference we don't expect gradients I think, but...
+    
+    \item \textbf{Band-pass filters}: If \code{test\_updated\_bandpass} is true, band-pass filters are used instead and include frequencies from 400\si{\angstrom} to 100\si{\angstrom} and a resolution band at $\bm{L}_r$.
+\end{itemize}
+
+For visualization, the reference $\bm{S}$ is filtered with the filters $\bm{W}_r$, masked with $\bm{M}_{mol}$, centered and standardized. These volumes are saved in \code{test\_filt.mrc}
+
+% The filtered references $\bm{S}_r$ are finally centered and standardized withing $\bm{M}_{mol}$, masked again with $\bm{M}_{mol}$ and saved in \code{test\_filt.mrc}.
+
+% This is achieved by filtering the reference $\bm{S}$ with band-pass filters, resulting into $r$ references, referred as $\bm{S}_r$.
+
+\subsubsection{Difference maps}
+
+What we want to classify is the difference between each particle $p$ and the reference $\bm{S}$, for each length scale $r$, while accounting for incomplete sampling of the particles. To calculate a difference map $\bm{X}_{p,r}$, we do as follow:
+
+\begin{enumerate}
+    \item \textbf{Get the particle in the reference frame}: The particle $\bm{s}_p$ is extracted from the CTF phase-multiplied sub-region tomogram. Because we want to use the entire data-set for the classification, the two half-sets must be aligned in the same way we aligned two half-maps $\bm{S}_1$ and $\bm{S}_2$ in section \ref{sec:algo:classification:combine_maps}.
+    As such, the first half-set is translated by ${[\bm{T}_{orig}]}_p + \bm{T}_{gold}$ and rotated by $\bm{R}_{p} \bm{R}_{gold}$, whereas the second half-set is simply translated by ${[\bm{T}_{orig}]}_p$ and rotated by $\bm{R}_p$.
+
+    \item \textbf{Get the sampling function of the particle in the reference frame}: The same $\bm{R}_p$ rotation (or $\bm{R}_{p} \bm{R}_{gold}$) is applied to the sampling function of the particle $\bm{w}_{p}^2$ to correctly represent the original sampling of the subtomogram.
+    %\begin{note}As explained in section \myref{subsubsec:SF3D}, {\emClarity} is currently not computing a sampling function per particle, but divides the field of view by 9 strips parallel to the tilt-axis.
+    %\end{note}
+    
+    % We don't do this exactly in this order, but I think it is clearer like this.
+    \item \textbf{Calculate the difference map}: The difference map $\bm{X}_{p,r}$ between the reference and the ${p^{th}}$ particle, for the $r^{th}$ length scale, is then defined as:
+    \begin{equation}
+        \bm{X}_{p,r} =  \mathcal{F}^{-1} \bigg\{
+                                        \Big(
+                                            \underbrace{\mathcal{F} \left\{ \bm{S} \right\} \bm{w}^{2}_p}_{\mu=0,\ \sigma=1}\ -\
+                                            \underbrace{\mathcal{F} \left\{ \bm{s}_{p} \right\}}_{\mu=0,\ \sigma=1}
+                                        \Big) \bm{W}_{r}
+                                    \bigg\} \bm{M}_{mol}
+    \end{equation}
+    $\bm{X}_{p,r}$ is then centered and standardized.
+    To save memory and time, only the voxels within $\bm{M}_{mol}$ are saved.
+    \begin{note}The decomposition will be calculated on the host, but the difference maps are calculated on the device, which is much more efficient. The \code{PcaGpuPull} entry controls how many maps $\bm{X}_{p,r}$ should be held on the device at any given time.
+    \end{note}
+\end{enumerate}
+
+\subsubsection{Singular Value Decomposition} \label{sec:algo:classification:SVD}
+
+The difference maps $\bm{X}_{p,r}$ are then linearised into column vectors and stacked into a matrix $\bm{X}$, where the number of rows is the number of voxels $v$ within $\bm{M}_{mol}$, the number of columns is the number of particles $p$ and the number of pages (the third dimension) is the number of length scales $r$.
+
+One important step when doing a PCA is to center the variables, i.e. the voxels. In our case, it means that the rows of $\bm{X}$ should be set to have a mean equal to zero. In other words, each difference map must be subtracted by the average of all the difference maps.
+
+Once $\bm{X}$ is ready, we can then calculate the SVD, for each length scale $r$. This is a representation of what we have:
+
+\input{Figures_Tables/16_svd}
+
+As most of the variance is usually explained within the first 20 to 30 directions, it is usually not useful to save all of the directions. Use \code{Pca\_maxEigs} to select the number of directions you want to save. The goal now is to select the principal directions that are going to be used to reproject the data onto. This entirely relies on the user, so the principal directions are reshaped and a few files are saved to help:
+\begin{itemize}
+    % C = U * (S^2 / n-1) * U^T
+    \item \textbf{Variance map}: The covariance matrix of $\bm{X}$ is saved as \code{*\_varianceMap<n>-STD-<r>.mrc}, where \code{<n>} corresponds to the \code{Pca\_maxEigs} and \code{<r>} corresponds to the length scale number $r$ in \code{pcaScaleSpace}. These may be opened on top of your averages from this cycle and should highlight regions where there is significant variability across the data set. If these maps show little blobs everywhere, there is either no significant variability (just picking up noise) or there is still substantial wedge bias at this resolution.
+    
+    \item \textbf{Principal axes/directions}: The principal axes $\bm{U}$ are saved in \code{*\_eigenImage<n>-STD-mont-<r>.mrc}. The axes are organized from the lower left moving across the bottom row incrementing by one. The first image is associated with the greatest singular value, i.e. it describes the greatest portion of variance in the dataset. The second image describes the greatest portion of remaining variance, and so on. The value of the voxels can be greater than 1 or less than zero, so they should not be interpreted as a grayscale image. It might be easier to visualize them with colors (3dmod: \code{F12}). For visualization, the principal axes are centered and standardized.
+    
+    \item \textbf{Sums}: The principal axes can be difficult to interpret, so it might useful to add them to the reference, which highlights what is being explained in each principal direction. These are saved in saved in \code{*\_eigenImage<n>-STD-SUM-mont-<r>.mrc}.
+    % Actually we calculate the avg.
+\end{itemize}
+
+\subsubsection{Clustering}
+
+
+Once that the principal directions of each length scale $r$ are selected by the user, we can reprojected the data along these axes. We refer to the principal components as ${[\bm{S}_{r}\bm{V}^{T}_r]}_{best}$. Before PCA, each particle $i$ was described by $v$ variables. Now, each particle is only described by $a+b+c$ variables (Figure \ref{fig:cluster}), with $a+b+c \ll v$, i.e. the dimentionality of the dataset was reduced.
+
+\input{Figures_Tables/16_cluster}
+
+The projected data ${[\bm{SV}^T]}_{best}$ is then clustered into $k$ clusters using $k$-means clustering. $k$ is set by \code{Pca\_clusters}. The squared Euclidean distance metric is used by default, i.e. each centroid is the mean of the points in that cluster, and the number of replicates is set to 128, i.e. the number of times to repeat clustering using new initial cluster centroid positions. Both of these can be changed using the parameters \code{Pca\_distMeasure} and \code{Pca\_nReplicates}. The $k$-means\texttt{++} algorithm is used for cluster center initialization and the number of maximal iteration is set to 5000.
+
+At the end, each particle $p$ is assigned to a cluster $c(p)$, which is saved into the metadata.
+
+
+%%%%% WORKFLOW
+
+
+%% PCA:
+
+% 1) extract classification mask info: radius, type, center.
+
+% 2) Combine the reference:
+%   - a) Extract the rotation matrix and shifts used to align the two references during FSC calculation.
+%   - b) load the 2 half-maps, apply the rotation and shifts to the first half map with spline interpolation and add it to the other map.
+%   - c) if the sampling for the classification is not equal to the sampling of the alignment, resample the reference with BH_reScale3d.
+
+% 3) Volume mask, volTMP:
+%   - a) get the shape mask (type, size, radius, center). If any symmetry, calculate only the asym unit.
+%   - b) get the reference mask and multiply it with the shape mask.
+%   - c) save this as *_pcaVolMask.mrc.
+
+% 4) For each resolution band, save the following (X is the resolution band number, starting from 1):
+%   - masks.volMask.1.X = volTMP;
+%   - masks.binary.1.X = (volTMP >= bh_global_binary_pcaMask_threshold)(:); bh_global_binary_pcaMask_threshold = 0.5
+%   - masks.binaryApply.1.X = (volTMP >= 0.01);
+%   - masks.scaleMask = bandpass(highcut = 400, lowcut = resolution_band * 0.9)
+
+% 5) Create one average for each resolution band:
+%   - a) center and standardize the reference with binaryApply and apply the volMask to this volume.
+%   - b) apply the scaleMask of this resolution band and center/standardize.
+%   - c) center within binary and standardize within binaryApply and apply binaryApply to the filtered volume.
+%   - d) mount and save these averages in test_filt.mrc.
+
+% 6) extract the particles:
+%   - a) load the SFs. If different size, pad the reference for each resolution accordingly. 
+%   - b) The sampling functions are squared, so sqrt them before applying to the reference.
+%   - c) define the particles to use. Either random subset or full dataset.
+%   - d) For each valid particle (if not valid: -9999):
+%       - i) get shifts and rotation. The first halfset is additionally rotated and shifted (from the FSC) to merge both half-set.
+%       - ii) Extract the subtomograms, pad if truncated.
+%       - iii) rotate and shift. rotate the particle's SF.
+%       - iv) For each resolution band:
+%               - apply volMask (reference+shape) to the rotated particle.
+%               - bandpass filter with scaleMask and center and standardize.
+%               - Calculate the difference map (everything is in Fourier space):
+%                   - 1: multiply the reference by the particle's SF (which is rotated in the reference frame).
+%                   - 2: center and standardize both ref and particle (which are both in freq space at this point).
+%                   - 2: subtract the particle to the reference.
+%                   - 3: switch back to real space: this is the difference map.
+%               - Save the difference map voxel that belong to binary in tempDataMatrix{resolution_band}.
+%       - v) this is done on the GPU, but pull back to the CPU from time to time (every PcaGpuPull particle) in dataMatrix.
+%       - vi) clean the dataMatrix with not valid particles due to pre-allocation.
+
+% 7) Center the rows:
+%   - For each resolution band, each row (same variable but for all sample), center the row.
+
+% 8) For each resolution band, calculate the decomposition:
+%   - a) calculate the economy size SVD of dataMatrix.
+%   - b) keep the first n eigen vectors.
+%   - c) coeffs = S * V'; S(rxr) and V(rxr). Each eigenvector is scaled (rotate and stretch).
+%   - d) Calculate the principal components (projection of the data) varianceMap = U * (S^2/n-1) * U' but i'm sure this is what it does.
+%   - e) For each n eigenvector:
+%       - i) get the eigenvector (which is actually the eigenImage) from U.
+%       - ii) replace it within the full volume (so far it was restricted to binary).
+%       - iii) center and standardize within binaryApply. This is the eigenImage.
+%       - iv) calculate the sum: (eigenImage + reference)/2.
+%   - f) mont the eigenImages and sum and save to disk.
+
+% 9) Save the coeffs to metada.
+
+%%%%%%%%%%%% 
+%%%%%%%%%%%% CLUSTER
+%%%%%%%%%%%% 

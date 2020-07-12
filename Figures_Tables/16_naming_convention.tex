@@ -1,0 +1,26 @@
+% \renewcommand{\arraystretch}{1.2}
+\begin{longtable}[c]{| l || p{120mm} |}
+\captionsetup{labelfont=bf}
+\caption{Symbols often used} \label{tab:symbols}\\
+% I need to check the diff between first and last column. It is useful when removing images.
+
+\hline
+\textbf{Symbol} & \textbf{Description}\\ \hhline{|=#=|}
+$\bm{S}$ & A reference, i.e. a subtomogram average or a template.\\ \hline
+$\bm{s}$ & A particle in 3D, i.e. a subtomogram.\\ \hhline{|=#=|}
+
+$\bm{V}$ & A tomogram. This usually refers to the full tomogram or a sub-region tomogram.\\ \hline
+$\bm{I}$ & An image. This can be an entire image, a strip or a tile.\\ \hhline{|=#=|}
+
+$\bm{W}$ & A weight in Fourier space. This can be a low- high- band-pass filter, a total 3D sampling function, 1D or 2D CTFs, an exposure or "B-factor" filter, etc. 3D sampling functions are referred as $\bm{w}$.\\ \hline
+$\bm{M}$ & Real space masks. This can be any shape mask, molecular masks, evaluation masks, etc.\\ \hhline{|=#=|}
+
+$\bm{\mathrm{z}}$ & a defocus value\\ \hline
+$\bm{\Delta \mathrm{z}}$ & a defocus shift. $\bm{\Delta \mathrm{z}}_{ast}$ is the astigmatic shift.\\ \hline
+$\bm{\phi}$ & the azimuthal angle. $\bm{\phi}_{ast}$ is the astigmatic angle.\\ \hhline{|=#=|}
+
+$\bm{R}$ & a rotation matrix\\ \hline
+$\bm{T}$ & a translation\\ \hline
+$\bm{\alpha}$ & a tilt angle\\ \hline
+
+\end{longtable}

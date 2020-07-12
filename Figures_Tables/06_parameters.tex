@@ -1,0 +1,53 @@
+% Parameters for ctf estimate
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{| l || p{110mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{ctf estimate} parameters]{\code{ctf estimate} parameters. Your parameter file should have the following parameters.\\ \textcolor{myred}{\textbf{*}} indicates the required parameters, \textcolor{blue}{\textbf{*}} indicates expert parameters. Expert parameters should not be changed except if you know what you are doing. The other parameters are optional.}\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Microscope settings}}\\
+\hline
+
+-- \code{VOLTAGE}\textcolor{myred}{\textbf{*}} & Accelerating voltage of the microscope in Volts (e.g. 300e3).\\
+-- \code{Cs}\textcolor{myred}{\textbf{*}} & Spherical aberration of the microscope in meters (e.g. 2.7e-6).\\
+-- \code{AMPCONT}\textcolor{myred}{\textbf{*}} & Percent amplitude contrast ratio (e.g. 0.09).\\
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meters per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+
+
+% Fiducials
+\hline
+\multicolumn{2}{|c|}{\textbf{Fiducials}}\\
+\hline
+
+-- \code{beadDiameter} & Diameter of the beads to erase, in meters (e.g. 10e-9). This parameter is used if fiducial beads need to be erased, thus only for stacks with a \code{fixedStacks/*.erase} file.\\
+
+% Tilt-scheme
+\hline
+\multicolumn{2}{|c|}{\textbf{Tilt-scheme}}\\
+\hline
+
+-- \code{CUM\_e\_DOSE}\textcolor{myred}{\textbf{*}} & Total exposure in e/\si{\angstrom}$^2$.\\
+-- \code{doseAtMinTilt}\textcolor{myred}{\textbf{*}} & The exposure each view receive (should be about \code{CUM\_e\_DOSE} / nb of views), in e/\si{\angstrom}$^2$.\\
+-- \code{oneOverCosineDose}\textcolor{myred}{\textbf{*}} & Whether or not it is a Saxton scheme (dose increase as 1/cos($\alpha$), $\alpha$ being the tilt angle); this will scale \code{doseAtMinTilt} according to the tilt angle (e.g. 0).\\
+-- \code{startingAngle}\textcolor{myred}{\textbf{*}} & Starting angle, in degrees (e.g. 0).\\
+-- \code{startingDirection}\textcolor{myred}{\textbf{*}} & Starting direction; should the angles decrease or increase (neg or pos).\\
+-- \code{doseSymmetricIncrement}\textcolor{myred}{\textbf{*}} & The number of tilts  before each switch in direction. 0=false, 2="normal" dose symmetric. The original dose symmetric scheme included 0 in the first group. For this, specify the number as a negative number.\\
+\hline
+\newpage
+
+% Defocus estimate
+\hline
+\multicolumn{2}{|c|}{\textbf{Defocus estimate}}\\
+\hline
+
+-- \code{defCutOff}\textcolor{myred}{\textbf{*}} & The power spectrum used by \code{ctf estimate} is considered from slightly before the first zero past the first zero to this cutoff, in meter (e.g. 7e-10).\\
+-- \code{defEstimate}\textcolor{myred}{\textbf{*}} & Initial rough estimate of the defocus, in meter. With \code{defWindow}, it defines the search window of defoci.\\
+-- \code{defWindow}\textcolor{myred}{\textbf{*}} & Defocus window around \code{defEstimate}, in meter; e.g. if \code{defEstimate} = 2.5e-6 and \code{defWindow} = 1.5e-6, try a range of defocus between 1e-6 to 4e-6.\\
+-- \code{deltaZtolerance}\textcolor{blue}{\textbf{*}} & Includes the tiles with defocus equal to that at the tilt-axis $\pm\Delta{Z}$, in meters. See section \ref{sec:algo:defocus_estimate} for more details. Default=50e-9.\\
+-- \code{zShift}\textcolor{blue}{\textbf{*}} & Used for the handedness check. Shift the evaluation region ($Z_{tilt-axis}\ \pm\code{deltaZtolerance}$) by this amount. See section \ref{sec:algo:defocus_estimate} for more details. Default=150e-9.\\
+-- \code{ctfMaxNumberOfTiles}\textcolor{blue}{\textbf{*}} & Limits the number of tiles to include in the power spectrum. The more tiles, the stronger the signal but the longer it takes to compute the power spectrum. Default=4000.\\
+-- \code{ctfTileSize}\textcolor{blue}{\textbf{*}} & Size of the (square) tiles, in meters. Default=680e-10.\\
+-- \code{paddedSize}\textcolor{blue}{\textbf{*}} & The tiles are padded to this size, in pixel, in real space before computing the Fourier transform. Should be even, large (compared to the tiles), and preferably a power of 2. Default=768.\\
+
+\hline
+\end{longtable}

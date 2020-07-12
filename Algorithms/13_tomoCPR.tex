@@ -1,0 +1,258 @@
+\subsection{Tilt-series refinement} \label{sec:algo:tomoCPR}
+
+
+Subtomogram averaging provides accurate estimates of both particle positions and high SNR reconstructions. It is thus possible to leverage this information for improving the alignment of a tilt-series.
+
+
+\subsubsection{Reconstruct the synthetic tomogram}
+
+The first is to reconstruct the full tomogram $\bm{V}$ in the same way we reconstructed the sub-regions tomograms in section \ref{sec:algo:ctf_3d}. Similarly to the sub-region tomograms used for subtomogram averaging and alignment, this tomogram is CTF-phase corrected. To save some precious run time and because this tomogram is only used to refine the fiducial positions, {\emClarity} does not follow the so-called ``3D CTF-correction``. Indeed, the correction is forced to have only one $z$ slab (section \ref{sec:algo:ctf_3d:defocus_step}). In other words, the thickness of the specimen is not taken into account during the correction, but only the tilts. Moreover, the center of mass in $z$ is not adjusted and the spatial model is not defined (section \ref{sec:algo:ctf_3d:spatial_model}).
+
+% ASK BEN: The tomogram is standardized ($\sigma=1$) and weighted based on the particle mass:
+%          divide the tomogram by rmsScale*rms(tomogram); rmsScale = sqrt(particleMass).
+
+Once that the full tomogram is reconstructed, the subtomograms are replaced by their corresponding half-maps. For each particle $i$:
+
+\begin{enumerate}
+    \item \textbf{Get the coordinates of the particle}: The $x,\ y,\ z$ coordinates of the particle, that are saved in the metadata, corresponds to the 3D coordinates within the sub-region tomogram, with the origin at the lower left corner. In this section, we are working with the full tomogram $\bm{V}$, i.e. the entire field of view, so the coordinates must be adjusted to $\bm{V}$.
+
+    \item \textbf{Get the reference in the microscope frame}: The particle is attached to a rotation $\bm{R}_i$. Moreover, as explained in section \ref{sec:algo:avg:subtomo_avg} step \textbf{1.b}, the particles $p$ are attached to a translation ${[\bm{T}_{orig}]}_p$. The half-map $\bm{S}$ is rotated by $\bm{R}^{T}_i$ and translated by ${[-\bm{T}_{orig}]}_i$ (note \ref{note:ref2mic_frame}). The same transformation is applied to the soft-edged molecular mask $\bm{M}_{mol}$ (section \ref{sec:algo:avg:molecular_mask}). We will refer to the transformed reference and transformed mask as $\bm{S}_p$ and ${[\bm{M}_{mol}]}_p$.
+    % I'm skipping the fact that we actually compute the fsc mask on ref1+ref2 and applying a spherical mask.
+    
+    \item \textbf{Replace the particle's density by the reference's density}: The voxels of the full tomogram $\bm{V}$ corresponding to the particle $\bm{s}_p$ are replaced by the masked reference, such as:
+    \begin{equation}
+        \bm{V}(\bm{s}_p) = \left(1-{[\bm{M}_{mol}]}_p \right)\bm{s}_p + \bm{S}_p {[\bm{M}_{mol}]}_p
+    \end{equation}
+    where $\bm{V}(\bm{s}_p)$ refers to the voxels of $\bm{V}$ that corresponds to the particle $\bm{s}_p$.
+\end{enumerate}
+
+
+%   - 1) Reconstruct the full tomogram:
+%       - a) Get the thickness of the reconstruction t (maxZ):
+%           - For each sub-regions, get the Zmax-Zmin + Zshift, and save maxZ as the thickest.
+%       - b) Call ctf 3d, but reconstruct the entire field of view, use the maxZ defined above, one Z section, no surfaceFit.
+%            Therefore, this is not a 3D correction: the tilt is corrected, but no thickness (one Z section...).
+%            You don't use the particle positions here: no offsets.
+
+%   - 2) Standardize the tomogram and weight it based on the particle mass:
+%       - a) divide the tomogram by rmsScale*rms(tomogram); rmsScale = sqrt(particleMass).
+
+% - 3) For each sub-region:
+%       - a) Get the exposure (first view is exposure=0).
+%       - b) Get the defocus values z: _align.defocus
+%       - c) Get the xf file (no rotation, no shift): _align.XF
+%       - d) Get the sub-regions coordinates (relative to the full tomo).
+%       - e) Get the particleMask = boxsize of the reference, sphere of particleRadius * fsc reference mask of ref1+ref2
+
+%       - f) For each subtomo: Reprojection of the subtomograms.
+%           - i) Get rotation and position of particle: prjVector (relative to the full tomogram, center).
+%                There is a preShift = [-0.5,-0.5,0.5] applied. This is for IMOD I think, pixel vs coord space.
+%           - ii) Extract the subtomogram pixel coordinates indVal and shiftVal, using its subregions tomogram boundaries.
+%                 This is like avg or alignRaw.
+%           - iii) Put the reference of the particle (fsc 1 or 2) in the mic frame: rot' and then shiftVal.
+%                  Apply the same transformation to the ref mask and apply it to the resampled ref.
+%           - iv) Replace the full tomogram voxels by the reference: tomo * (1-refMask) + ref
+%                 Multiplying by 1-refMask to take into account the taper.
+%           - v) Save the 3d position of the particle. The positions are 90deg rotx, lower left corner full tomo.
+%               _ali*.coord: x,y,z,fid_id
+%           - vi) Save the 2d position of the particle for each image in the stack:
+%               _ali*.defAng = fid_id,section,def; def = z_tilt + z_subtomo (coord(x,y,z) * tilt), in binned pixel.
+%               _ali*.coord_start = fid_id,subregion,particle_id,def,def_shift,def_angle(deg),rotm,pre_exp,post_exp,fsc_group.
+%                                   The def here is not as defAng; here it is not tilted, just prjVector + z_tilt.
+
+\subsubsection{Reproject the synthetic tilt-series} \label{sec:algo:tomoCPR:reproject_coords}
+
+We want to reproject the ``synthetic'' tilted views \emph{and} the particles coordinates. Both reprojections are calculated by {\tilt}:
+\begin{itemize}
+    \item \textbf{Reproject the coordinates}: For the tilt-series alignment, {\tiltalign} needs the $x,\ y$ coordinates of the particles, for each view of the tilt-series. Fortunately, {\tilt} can reproject the $x,\ y,\ z$ coordinates of the particles and if the defocus value are know, for each view, it can also calculate the defocus of each particle, for each view, while accounting for the local alignments that were used during the reconstruction.
+    % As such, we run {\tilt} with the following entries:
+    % table
+    
+    \item \textbf{Reproject the tilt-series}: The synthetic tomogram, calculated at the previous section, is reprojected into an aligned synthetic tilt-series using {\tilt}. Of course, it takes into account the eventual local alignments that were used to reconstruct the tomogram.
+\end{itemize}
+
+\begin{note}{\tilt} and {\tiltalign} operates with the $y$ axis, i.e. the \code{SLICE}, in the third dimension. So both the ``synthetic'' tomogram and the $x,\ y,\ z$ coordinates are rotated by 90\textdegree\ around $x$.
+\end{note}
+
+
+%  - v) Save the 3d position of the particle. The positions are 90deg rotx, lower left corner full tomo.
+%               _ali*.coord: x,y,z,fid_id
+%   - 4) Reprojection 3d from 2d:
+%       - a) Save _ali*.coord into model file: .3dfid and reproject (at the tilt angles) the 3dfid coordinates with tilt = coordPrj.
+%            Each fiducial has its defocus value reprojected as well, as in .defAng, but with local alignments compensated = defAngTilt.
+%       - b) Rotate -rx and save the synthetic tomogram .tmpRot.
+%       - c) Reproject with tilt at the same tilt angles than original tilts:
+%           - The reprojection is divided into chunks, in Y.
+%           - COSINTERP 0, THICNESS maxZ, local file if any.
+
+\subsubsection{Refine the fiducial positions}
+
+The synthetic tomogram is now reprojected into a synthetic tilt-series. Tiles around each projected high SNR subtomogram origin are masked out, convolved with the CTF of the raw data projection at that point and aligned to the raw data.
+
+By default, {\emClarity} is setting the maximal number of particle which are going to be used as fiducial to 1800. This value can be changed with the \code{tomoCPR\_randomSubset} entry. If there is more particles than the allowed number of fiducial, a random subset of particles will be selected.
+
+We will refer to the raw aligned tilt-series as $\bm{I}_{raw}$ and synthetic tilt-series as $\bm{I}_{synt}$. Before starting the refinement, each view ${[\bm{I}_{raw}]}_i$ and ${[\bm{I}_{synt}]}_i$ are centered and standardized, first globally, then locally. Combined with the sampling mask, calculated in section \ref{sec:algo:defocus_estimate:transform}, it allows us to define a mask ${[\bm{M}_{eval}]}_i$ excluding regions that are not sampled or that significantly varies from the rest of the data, like carbon, contaminants, etc.
+
+Before refining the fiducial positions, a global shift estimate is calculated, for each view $i$.
+\begin{enumerate}
+    \item \textbf{Calculate the cross-correlation map}: The cross-correlation between ${[\bm{I}_{raw}]}_i$, which is not CTF corrected, and ${[\bm{I}_{synt}]}_i$, which is multiplied by the CTF, is defined as follow:
+    \begin{equation}
+        \bm{\mathrm{CC}}_{i} = \mathcal{F}^{-1} \left\{ \bm{W}_{low\text{-}pass}\ {[\bm{W}_{ctf}]}_i\ \mathcal{F}\left\{ {[\bm{I}_{raw}]}_i \right\}\ \overline{\mathcal{F}\left\{ {[\bm{I}_{synt}]}_i \right\}}\ \left|{[\bm{W}_{ctf'}]}_i\right|\ \right\} \bm{M}_{peak\text{-}global}
+    \end{equation}
+    where $\bm{W}_{low\text{-}pass}$ is a low-pass filter, with a low-cutoff set by \code{tomoCprLowPass}. ${[\bm{W}_{ctf}]}_i$ is the astigmatic 2D CTF of the view $i$, with envelope. $|{[\bm{W}_{ctf'}]}_i|$ is the astigmatic 2D CTF without envelope and is used to modulate the amplitudes of the reprojected reference to better match the raw data. $\bm{M}_{peak\text{-}global}$ is a spherical mask and limits the translation to $\sim 10$ to $20$\si{\angstrom}.
+    
+    \item \textbf{Get highest peak position}: This step is identical to the last step of section \ref{sec:algo:align:get_translation} and outputs a translation ${[\bm{T}_{global}]}_i$.
+    
+    \item \textbf{Apply the global translation estimate}: ${[\bm{I}_{raw}]}_i$ is translated by ${[\bm{T}_{global}]}_i$, using linear interpolation.
+\end{enumerate}
+
+%       - c) Calculate the ctf of the projection, without envelope. PhaseOnly=-0.15 and not 1? HqzUnMod is the CTF before cutoffs and without PhaseOnly.
+%       - d) Calculate the CCmap = fftshift(ifftn( bandPassPrj * fftn(dataPrj) * abs(HqzUnMod) * conj(fftn(refPrj)*Hqz) ))
+%            To match the amplitudes, given that the projected reference is amplitude corrected, I multiplying fftn(refPrj) with abs(ctf). Why not do same for local refinement?
+%       - e) Get the peak estPeak = subtract with min, apply globalPeakMask, take the max, get 7x7 box around it, calculate the COM and add to max. This is like usual.
+%       - f) Shift the dataPrj by estPeak.
+
+Then, the $x$ and $y$ position of each particle, for each view $i$ is refined as follow:
+\begin{enumerate}
+    \item \textbf{Extract the particle tile}: For both $\bm{I}_{raw}$ and $\bm{I}_{synt}$, a tile of $1.5 \times \code{particleRadius}$ is extracted at the particle reprojected coordinate, centered and standardized. If the tiles overlap with the evaluation mask ${[\bm{M}_{eval}]}_i$, the particle is ignored and will not be used as fiducial.
+    
+    \item \textbf{Calculate the translation between the raw and the synthetic tile}: The tiles are padded 2 times in real space, masked and the CC map is calculated as follow:
+    \begin{equation}
+        \bm{\mathrm{CC}}_{p,i} = \mathcal{F}^{-1} \left\{ \bm{W}_{low\text{-}pass}\ {[\bm{W}_{ctf}]}_{p,i}\ \mathcal{F}\left\{ {[\bm{I}_{raw}]}_{p,i} \right\}\ \overline{\mathcal{F}\left\{ {[\bm{I}_{synt}]}_{p,i} \right\}}\ \right\} \bm{M}_{peak\text{-}local}
+    \end{equation}
+    where ${[\bm{W}_{ctf}]}_{p,i}$ is the anisotropic 2D CTF at the particle position, defined by the defocus value $\bm{\mathrm{z}}_{p,i}$. $\bm{M}_{peak\text{-}local}$ is a mask controlled by \code{Peak\_mType} and \code{Peak\_mRadius} and is used to restrict the translation. By default, it is set to $0.4 \times \code{particleRadius}$.
+    
+    \item \textbf{Get the translation estimate}: This step is identical to the last step of section \ref{sec:algo:align:get_translation} and outputs a translation ${[\bm{T}_{local}]}_{p,i}$.
+\end{enumerate}
+
+At this end of this procedure, each fiducial is translated by ${[\bm{T}_{orig}]}_{p,i} + {[\bm{T}_{global}]}_i + {[\bm{T}_{local}]}_{p,i}$ and saved for the next step.
+
+The defocus value can be refined by sampling a range of defocus value around the current estimate in order to maximize $\mathrm{CC}_{p,i}$. The defocus search is set by $\bm{\mathrm{z}}_{p,i} \pm $ \code{tomoCprDefocusRange}, with a step of \code{tomoCprDefocusStep}. For each image $i$, the defocus shifts $\bm{\Delta \mathrm{z}}_{p,i}$ that maximize $\mathrm{CC}_{p,i}$ are averaged and this average will be added to the current the defocus value of the image.
+
+\subsubsection{Align and transform the tilt-series}
+
+The fiducials are now aligned, so we can use them to find a new geometric model with {\tiltalign}. A bash script is saved in \code{mapBack<n>} and contains the parameters that are used for the alignment. Most of them are accessible directly via the {\emClarity} parameter file (table \ref{param:tomoCPR}).
+
+Finally, the raw unaligned tilt-series in \code{fixedStacks} is transformed using this new geometric model. This last part is done via \code{ctf update} and is similar to section \ref{sec:algo:defocus_estimate} to the exception that this new alignment is relative to the aligned tilt-series. As such, the new rotation and shifts are added to the original ones, and the tilt angles are updated. This new transformation is saved in a new table \ref{tab:ctf_tlt}. The beads coordinates are updated as well and erased.
+
+%% WORKFLOW
+
+% Get the reference:
+%   - un-mount the reference
+
+%%% For every tilt-series saved in mapBackGeometry:
+
+%   - 1) Reconstruct the full tomogram:
+%       - a) Get the thickness of the reconstruction t (maxZ):
+%           - For each sub-regions, get the Zmax-Zmin + Zshift, and save maxZ as the thickest.
+%       - b) Call ctf 3d, but reconstruct the entire field of view, use the maxZ defined above, one Z section, no surfaceFit.
+%            Therefore, this is not a 3D correction: the tilt is corrected, but no thickness (one Z section...).
+%            You don't use the particle positions here: no offsets.
+
+%   - 2) Standardize the tomogram and weight it based on the particle mass:
+%       - a) divide the tomogram by rmsScale*rms(tomogram); rmsScale = sqrt(particleMass).
+
+%   - 3) For each sub-region:
+%       - a) Get the exposure (first view is exposure=0).
+%       - b) Get the defocus values z: _align.defocus
+%       - c) Get the xf file (no rotation, no shift): _align.XF
+%       - d) Get the sub-regions coordinates (relative to the full tomo).
+%       - e) Get the particleMask = boxsize of the reference, sphere of particleRadius * fsc reference mask of ref1+ref2
+
+%       - f) For each subtomo: Reprojection of the subtomograms.
+%           - i) Get rotation and position of particle: prjVector (relative to the full tomogram, center).
+%                There is a preShift = [-0.5,-0.5,0.5] applied. This is for IMOD I think, pixel vs coord space.
+%           - ii) Extract the subtomogram pixel coordinates indVal and shiftVal, using its subregions tomogram boundaries.
+%                 This is like avg or alignRaw.
+%           - iii) Put the reference of the particle (fsc 1 or 2) in the mic frame: rot' and then shiftVal.
+%                  Apply the same transformation to the ref mask and apply it to the resampled ref.
+%           - iv) Replace the full tomogram voxels by the reference: tomo * (1-refMask) + ref
+%                 Multiplying by 1-refMask to take into account the taper.
+%           - v) Save the 3d position of the particle. The positions are 90deg rotx, lower left corner full tomo.
+%               _ali*.coord: x,y,z,fid_id
+%           - vi) Save the 2d position of the particle for each image in the stack:
+%               _ali*.defAng = fid_id,section,def; def = z_tilt + z_subtomo (coord(x,y,z) * tilt), in binned pixel.
+%               _ali*.coord_start = fid_id,subregion,particle_id,def,def_shift,def_angle(deg),rotm,pre_exp,post_exp,fsc_group.
+%                                   The def here is not as defAng; here it is not tilted, just prjVector + z_tilt.
+
+%   - 4) Reprojection 3d from 2d:
+%       - a) Save _ali*.coord into model file: .3dfid and reproject (at the tilt angles) the 3dfid coordinates with tilt = coordPrj.
+%            Each fiducial has its defocus value reprojected as well, as in .defAng, but with local alignments compensated = defAngTilt.
+%       - b) Rotate -rx and save the synthetic tomogram .tmpRot.
+%       - c) Reproject with tilt at the same tilt angles than original tilts:
+%           - The reprojection is divided into chunks, in Y.
+%           - COSINTERP 0, THICNESS maxZ, local file if any.
+
+%   - 5) Prepare the alignment:
+%       - CTFSIZE = 2 * 1.5 * particleRadius, up to best Fourier = box size
+%       - ctfMask = spherical mask that covers the entire tile -padding.
+%       - peakMask = spherical 0.4 * particleRadius. If eraseMask = define own type and radius with Peak_mType and Peak_mRadius.
+%       - bandPassPrj = size of the tilt-series. lowpassCutoff = tomoCprLowPass, between 10 and 24A (and Nyquist).
+%       - globalPeakMask = closest even int to max(2, ceil(10/pixSize)); look around +/- 10-20A. The mask is at the center of the CCmap of the stack.
+
+%   - 6) Fiducial: select the fiducial to follow. Take all if < tomoCPR_randomSubset, otherwise take a random subset.
+
+%   - 7) For each view:
+%       - a) Load both the stack (dataPrj), synthetic stack (refPrj) and samplingMask. Resample samplingMask to current binning.
+%       - b) Get dataPrj ready:
+%           - i) center and standardize globally = dataPrj
+%           - ii) then calculate the local mean, subtract it = dataRMS. The local window is 256x256 unbinned,
+%                 or 64x64 unbinned for the local rms (for the mask, not for the local scaling).
+%           - iii) Remove outliers: calculate on the dataRMS the local rms, the global mean and rms.
+%                  evalMask = dataRMS > (mRms - 2*sRms) & ~samplingMask
+%                  This remove from the evalMask the regions that are not sampled, and carbone, etc.
+%           - iv) Local scaling: subtract the local mean to dataPrj, and divide by local rms of this centered dataPrj.
+%                OR Option: BH_whitenNoiseSpectrum
+%           - v) Global scaling: center and standardize dataPrj AND refPrj with their mean and rms.
+
+%       - c) Calculate the ctf of the projection, without envelope. PhaseOnly=-0.15 and not 1? HqzUnMod is the CTF before cutoffs and without PhaseOnly.
+%       - d) Calculate the CCmap = fftshift(ifftn( bandPassPrj * fftn(dataPrj) * abs(HqzUnMod) * conj(fftn(refPrj)*Hqz) ))
+%       - e) Get the peak estPeak = subtract with min, apply globalPeakMask, take the max, get 7x7 box around it, calculate the COM and add to max. This is like usual.
+%       - f) Shift the dataPrj by estPeak.
+
+%       - g) For each fiducial in this projection:
+%           - IF ctfCalc:
+%               - if sqrt(2)*pixelSize > min_res_for_ctf_fitting(10), then, turn-off the defocus refinement.
+%              
+%           - take the X and Y coordinates of the particles from .coordPrj
+%           - tileRadius = 1.5 * PARTICLE_RADIUS. oxEval/oyEval = X/Y +/- PARTICLE_RADIUS.
+%           - If any 0 in the evalMask, within this the particle radius OR if the tile is out-of-bounds, the particle is ignored.
+%           - extract the tile, from dataPrj and refPrj. center and standardize.
+%           - Pad the images to CTFSIZE (oversample) and apply ctfMask to the tiles.
+%           - calculate fft of tiles, lowpass to lowPassCutoff, highpass to 400. Take the conj for the refPrj and multiply by the CTF of particle (using defAngTilt).
+%               - if ctfCalc:
+%                   - highpass to 40, lowpass to min(sqrt(2)*pixelSize, min_res_for_ctf_fitting).
+%                   - try a range of defocus, set by tomoCprDefocusRange and tomoCprDefocusStep.
+%           - dXY = calculate the CCmap, apply peakMask and get the peak coordinates as usual.
+%                   Take into account the x/y shift due to extraction of the tiles AND estPeak.
+%           - if calcCTF:
+%               - take the defocus that gave the highest peak. Take the mean of these defoci for each fiducial in this image: this is the defocus shift to apply to the defocus at the titl-axis of this given projection. This is saved in _ctf.defShifts
+%           - Save the new coordinates in .coordFIT: particle_id, fid_id, dXY
+
+%   - 8) Call tiltalign - refine the tilt-series alignment:
+%       - RotOption	1: for each view having an independent rotation
+%       - TiltOption 5: to automap groups of tilt angles (for linearly changing values), TiltDefaultGrouping = 5
+%       - MagOption 1: to vary all magnifications independently
+%  XStretchOption	0
+% SkewOption	0
+% BeamTiltOption	0
+% XTiltOption	0
+% ResidualReportCriterion	0.001
+% RobustFitting
+% KFactorScaling 0.458: k_factor_scaling = 10 / sqrt(nFidsTotal)
+% LocalAlignments
+% LocalRotOption 1
+% LocalRotDefaultGrouping 3
+% LocalTiltOption 5
+% LocalTiltDefaultGrouping 5
+% LocalMagOption 1
+% LocalMagDefaultGrouping 5
+
+
+%%%%%% CTF UPDATE
+% Align the tilt-series with ali2_ctf.tlt, like ctf estimate (fraction inelatic, etc.).
+%   - The shifts and rotation are relative to the aligned stack, so the new alignment is added to the original one. So update ali2_ctf.tlt to make it relative to the raw tilt-series (rotm and shift).
+%   - Add to def value the .defShifts (if calcCTF).
+%   - Update the tilt angles.
+%   - Update the beads coordinates, using the new .tltxf transformation. (rotation + mag) and erase them on the new aligned stack.
+%

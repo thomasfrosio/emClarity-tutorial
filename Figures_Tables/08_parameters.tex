@@ -1,0 +1,41 @@
+% Parameters for ctf estimate
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{| l || p{120mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{templateSearch} parameters]{\code{templateSearch} parameters.  Your parameter file should have the following parameters.\\ \textcolor{myred}{\textbf{*}} indicates the required parameters, \textcolor{blue}{\textbf{*}} indicates expert parameters. Expert parameters should not be changed except if you know what you are doing. The other parameters are optional.}\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Sampling}}\\
+\hline
+
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+-- \code{Tmp\_samplingRate}\textcolor{myred}{\textbf{*}} & Sampling (i.e. binning) at which the sub-region should be reconstructed to perform the template matching (1 means no binning). The sampling rate should be chosen to give a running pixel size between 8 and 12\si{\angstrom}/pix.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Particle}}\\
+\hline
+
+-- \code{particleRadius}\textcolor{myred}{\textbf{*}} & Particle radii, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. In this context, it defines a region around a cross-correlation peak to remove from consideration after a particle is selected. See \code{Peak\_mRadius} for more details.\\
+-- \code{Ali\_mRadius}\textcolor{myred}{\textbf{*}} & Alignment mask radii, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. In this case, it is used to pad/trim the template to this size.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Template matching}}\\
+\hline
+
+-- \code{Tmp\_angleSearch}\textcolor{myred}{\textbf{*}} & Angular search, in degrees. Format is [$\Theta_{out},\ \Delta_{out},\ \Theta_{in},\ \Delta_{out}$]. For example, [$180,\ 15,\ 180,\ 12$], specifies a $\pm$180\textdegree\ out of plane search (polar and azimuth angles) with 15\textdegree\ steps and $\pm$180\textdegree\ in plane search (planar angles) with 12\textdegree\ steps.
+
+If you have a particle with C6 symmetry (with the symmetry axis corresponding to the Z-axis) you might search a more limited range, like [$180,\ 15,\ 36,\ 9$], but for particles like ribosomes, there are no real constraints on the orientation, so searching a full grid in 12 to 15 degree increments is required.\\
+
+--\code{Tmp\_threshold}\textcolor{myred}{\textbf{*}} & Number of particle to pick. This will be override by the command line argument \code{<threshold>} (section \ref{sec:picking:run}).\\
+--\code{Tmp\_targetSize} & Size, in pixel, of the chunk to process. If the sub-region is too big, the processing will be split into individual chunks. Format is [$X, Y, Z$]. Default=[$512,\ 512,\ 512$].\\
+--\code{lowResCut} & The sub-region is filtered before performing the template search and this defines the resolution (in \si{\angstrom}) at which the Gaussian low-pass cutoff begins. Default=estimate of the frequency at which the CTF first goes to zero.\\
+% --\code{Tmp\_medianFilter} & Apply a median filter to the sub-region before computing the cross-correlation. It defines the size of the kernel, either 3, 5 or 7. Default=false.\\
+\hline
+\multicolumn{2}{|c|}{\textbf{Cross-correlation}}\\
+\hline
+
+--\code{Peak\_mType} & Type (i.e. shape) of the cross-correlation peaks. Can be sphere, cylinder or rectangle. See section \ref{sec:algo:picking} for more details. Default=sphere.\\
+--\code{Peak\_mRadius} & Radius of the cross-correlation peaks, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. See section \ref{sec:algo:picking} for more details. Default= $0.75\times\code{particleRadius}$.\\
+
+\hline
+\end{longtable}

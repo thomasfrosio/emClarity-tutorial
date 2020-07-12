@@ -1,0 +1,113 @@
+\section{Classification} \label{sec:classification}
+
+\subsection{Objectives}
+
+The heterogeneity of the data-set can be analysed by comparing individual particles with the current subtomogram average. To correct for differences in sampling between the reference and an individual particle, the current subtomogram average is distorted by the particle's 3D-sampling function it is being compared to. This effectively estimates what the average particle should look like at that subtomogram position, allowing to only compare meaningful differences. The dimensionality of these differences is reduced by principal component analysis, using singular-value decomposition (SVD). Features of a given length scale (e.g. $\alpha$-helices, small protein domains, etc.) can be focused on and considered simultaneously by band-pass filtering the reconstructions and computing the SVD for each length scale. The singular vectors describing the greatest variance for each length scale are then concatenated into feature vectors and clustered with $k$-means or other clustering algorithms.
+
+
+\subsection{Parameters}
+
+\input{Figures_Tables/14_parameters}
+
+\subsection{PCA}
+
+\subsubsection{Run}
+
+Before running the PCA, you have to start a new cycle by running the following command:
+\begin{lstlisting}
+>> emClarity avg <param.m> <cycle_nb> RawAlignment
+\end{lstlisting}
+Then, you can run the PCA on the entire dataset:
+\begin{lstlisting}
+>> emClarity pca <param.m> <cycle_nb> 0
+\end{lstlisting}
+For very large data sets, i.e. tens of thousands particles, the principal directions describing the important variation can be obtained with a subset of the data, which saves a lot of computation. In this case, use the \code{Pca\_randSubset} parameter and run the same command shown above. Then, to calculate the principal components of the rest of the dataset, run this second command:
+\begin{lstlisting}
+>> emClarity pca <param.m> <cycle_nb> 1
+\end{lstlisting}
+
+\subsubsection{Outputs}
+
+The goal now is to select, for each length scale, the principal directions that are going to be used to reproject the data onto. There are a few files that are here to help you decide, all of which are introduced in section \ref{sec:algo:classification:SVD}.
+
+For example, let's say you have 3 length scales and want to select the principal directions 3 to 5 for the first scale, 4, 5, 8, 9 for the second scale, and 3 and 5 for the last scale, you would have to write in your parameter file:
+
+\code{Pca\_coeffs=[ 3:5,0 ; 4,5,8,9 ; 3,5,0,0 ]}, or equivalently\\
+\code{Pca\_coeffs=[ 3,4,5,0 ; 4,5,8,9 ; 3,5,0,0 ]}
+
+In some cases, it is not obvious which principal directions to choose and it might require some trials before successfully clustering the dataset into meaningful clusters. Moreover, it might not be clear if the classification was successful or not until the reconstruction step.
+
+\subsection{Clustering}
+
+\subsubsection{Run}
+
+Once that you have selected the principal axes, for each length scale, we can select the corresponding principal components and cluster them.
+
+You can specify how many clusters you want with the \code{Pca\_clusters} parameters. For example, say you want to run 3 clustering, one with 2 clusters, one with 4 and one with 6:
+
+\code{Pca\_clusters=[2,4,6]}
+
+Then, run the following command:
+\begin{lstlisting}
+>> emClarity cluster <param.m> <cycle_nb>
+\end{lstlisting}
+
+\subsubsection{Outputs} \label{sec:classification:clustering:outputs}
+
+For each requested number of clusters (\code{Pca\_clusters}), the class populations are printed into a text file in the
+project directory called \code{<projectName>\_cycleXXX\_ClassIDX.txt}.
+
+
+\subsection{Reconstruction}
+
+To create a montage of your class averages, we need to call the \code{avg} procedure. As such, your parameter file should contains the parameters necessary to run \code{avg} (table \ref{param:avg}), plus an additional 3 parameters. Indeed, you have to specify which clustering to use. Say you ran 3 clustering, one of them with 6 clusters, like in the previous example. To reconstruct the subtomogram average of these 6 classes, you have to specify the following parameters in your parameter file:
+
+\code{Cls\_className=6}\\
+\code{Cls\_classes\_odd=[1:6,1.*ones(1,6)]}\\
+\code{Cls\_classes\_eve=[1:6,1.*ones(1,6)]}, or equivalently\\
+\code{Cls\_classes\_eve=[1:6, 1,1,1,1,1,1]}
+
+Each entry in the second row (everything after \code{1:6,}) is a CX symmetry, which may not be the same for each class. For example, you first ran the reconstruction without symmetry and realize that you have a C3 symmetry for all the classes, except in the last 2 classes where there is a C6 symmetry, you could then rerun the reconstruction with the following parameters:
+
+\code{Cls\_classes\_odd=[1:6, 3,3,3,3,6,6]}\\
+\code{Cls\_classes\_eve=[1:6, 3,3,3,3,6,6]}
+
+\begin{note}If you use the new \code{symmetry} parameter, the second row is not used but is still required for compatibility reasons.\end{note}
+
+To call the \code{avg} function, run the following command:
+\begin{lstlisting}
+>> emClarity avg <param.m> <cycle_nb> Cluster_cls
+\end{lstlisting}
+This can be done for each of your clustering specified in the \code{Pca\_clusters} parameter.
+
+
+\subsection{Select the classes to use as references}
+
+At this point, there are two possibilities. If any of the clustering was successful and you would like to cancel the classification and switch back to averaging and alignment, you could either use and rename the metadata back-up from the previous cycle and continue as nothing happened, or you could skip the current cycle by running the following command:
+\begin{lstlisting}
+>> emClarity skip <param.m> <cycle_nb>
+\end{lstlisting}
+
+On the other hand, if you have identified a good clustering, with some classes you would like to keep and some classes you would like to exclude, you will have to:
+\begin{enumerate}
+    \item Make sure the last reconstruction was done using the clustering you want to use. For example, if you ran the clustering with \code{Pca\_clusters=[2,4,6]}, then reconstructed the montage for all of these clustering, starting from 2 to 6, but want to use the second clustering with 4 classes, you would have to rerun the reconstruction of the second clustering before continuing.
+    % I think that's a bug, at least in my experience this is a necessary step. I didn't pay attention to this when I was locking at the code tbh...
+    
+    \item Save a copy of your metadata. This is useful for two reasons. First, the next step will remove some particles from further consideration, so if something goes wrong, it's better to keep a copy of the current state of the metadata. Second, if you want to split your dataset in multiple parts to process some classes independently from the others, the easiest way is to use this copy to repeat the next steps for each (group of) classes you want to analyze.
+
+    \item \textbf{Select the classes you want to exclude}: Open your class montage in \code{3dmod}, in ``Model'' mode and create a new model point for each class you want to delete. Save the model file, for example as \code{classes2ignore.mod}.
+    
+    \item \textbf{Exclude these classes}: Run the following command to exclude them; the particles that belongs to this/these class/classes will be tagged with a \code{-9999} in the metadata.
+\begin{lstlisting}
+>> emClarity geometry <param.m> <cycle_nb> Cluster_cls RemoveClasses <classes2ignore.mod> STD
+\end{lstlisting}
+    {\emClarity} will tell you how many particles were removed and how many are left. This should correspond exactly to the class populations from the clustering (section \ref{sec:classification:clustering:outputs}). If it doesn't, stop and make sure you followed the instructions from the first step. Replace the metadata with your copy from step 2 and try again.
+
+    \item \textbf{End this cycle of classification}: Finally, you will need to ``skip'' the currently disabled class average alignment, and
+    update the metadata so you may proceed to the next cycle of averaging/alignment.
+\begin{lstlisting}
+>> emClarity skip <param.m> <cycle_nb>
+\end{lstlisting}
+\end{enumerate}
+
+At this point, you can then turn off classification in your next parameter file (\code{flgClassify=0}) and proceed to the next cycle.

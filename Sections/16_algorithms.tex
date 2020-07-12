@@ -1,0 +1,64 @@
+\section{Algorithms} \label{sec:algo}
+
+\subsection{Naming conventions} \label{sec:algo:naming_conventions}
+
+There is a lot of things to cover and it is often easier to use abbreviations (CTF, FSC, CCC, etc.) and symbols to refer to something.
+
+\input{Figures_Tables/16_naming_convention}
+
+Indexes are subscripts, e.g. the $p^{th}$ subtomogram is referred as $\bm{s}_p$. This works with multiple indexes, e.g. the $p^{th}$ subtomogram rotated by the $r^{th}$ rotation is referred as $\bm{s}_{p,r}$. Labels are subscripts as well, e.g. if we want to specify that the subtomograms are in the reference frame, we would write $\bm{s}_{ref}$. On the other hand, if the symbol is labeled \emph{and} an index is needed, the labeled symbol is placed between square brackets. For instance, if we want to specify that the $p^{th}$ subtomogram is in the reference frame, we would write ${[\bm{s}_{ref}]}_p$.
+
+
+\subsection{Euler angles conventions} \label{sec:algo:euler_conventions}
+
+The $\phi, \theta, \psi$ Euler angles used by {\emClarity} describe a $z\text{-}x\text{-}z$ active intrinsic rotations of the particles coordinate system. That is to say, to switch the particles from the microscope frame to the reference frame, the basis vectors of the subtomograms are rotated (positive anti-clockwise) around $z$, the new $x$, and the new $z$ axis.
+
+The microscope frame defines the coordinate system of the microscope, where the electron beam is the $z$ axis. When the subtomograms are extracted from their tomogram, they are in the microscope frame. The reference frame is the coordinate system attached to the reconstruction, i.e. the subtomogram average and is therefore set during the particle picking.
+
+
+\subsection{Linear transformations in Fourier space}
+
+Linear transformations are often applied in Fourier space directly. It might be useful to write down a few useful properties of the Fourier transforms.
+
+\begin{itemize}
+    \item \textbf{Shift}: Shifting an image in real space is equivalent to applying a complex phase shift to its frequency spectrum, such as:
+    \begin{equation}
+        g(x,y) = f(x\bm{-a},y\bm{-b})\ \xleftrightarrow{\mathcal{F}}\ G(u,v) = F(u,v) \times \bm{ e^{ -2\pi i \left( \frac{au}{N}\ +\ \frac{bv}{M} \right) } }
+    \end{equation}
+    where $N$ and $M$ are the number of $u$ and $v$ frequencies, respectively. The complex phase shift is just a complex number on the unit circle, so the magnitude of the Fourier transform is unchanged, so $\abs{G(u,v)} = \abs{F(u,v)}$.
+            
+    \item \textbf{Magnification}: Magnifying an image by a factor $a$ is equivalent to magnifying its frequency spectrum by $1/a$, such as:
+    \begin{equation}
+        g(x,y) = f(\bm{a}x, \bm{b}y)\ \xleftrightarrow{\mathcal{F}}\ G(u,v) = \bm{\frac{1}{\abs{ab}}} \times F\left(\frac{u}{\bm{a}},\frac{v}{\bm{b}}\right)
+    \end{equation}
+            
+    \item \textbf{Rotation}: Rotating an image by an angle $\Theta$ in real space is the same as rotating its frequency spectrum by the same angle $\Theta$.
+\end{itemize}
+
+
+\newpage
+
+\input{Algorithms/05_tilt_series_alignment}
+\newpage
+
+\input{Algorithms/06_defocus_estimate}
+\newpage
+
+\input{Algorithms/08_picking}
+\newpage
+
+\input{Algorithms/10_ctf_3d}
+\newpage
+
+\input{Algorithms/11_avg}
+\newpage
+
+\input{Algorithms/12_align}
+\newpage
+
+\input{Algorithms/13_tomoCPR}
+\newpage
+
+\input{Algorithms/14_classification}
+\newpage
+

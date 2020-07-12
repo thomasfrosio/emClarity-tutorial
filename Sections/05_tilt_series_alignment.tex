@@ -1,0 +1,102 @@
+
+% Tilt-series alignment
+\section{Initial tilt-series alignment} \label{sec:tilt_series_alignment}
+
+\subsection{Objectives}
+
+The first step of the workflow consists into finding an initial alignment for the raw tilt-series, that is the tilt, rotation and shift for each image within the series. After the alignment, the tilt-axis must be parallel to the $y$-axis. This alignment can be refined later on using the particles positions (section \ref{sec:tomoCPR}).
+
+
+\subsection{With {\emClarity}} \label{sec:tilt_series_alignment:emClarity}
+
+{\emClarity} can align the tilt-series for you using its \code{autoAlign} procedure. This procedure is based on the {\IMOD} programs {\tilt} and {\tiltalign} and offers an automatic way of aligning tilt-series, with or without gold beads.
+
+
+\subsubsection{Parameters}
+
+\input{Figures_Tables/05_parameters}
+
+
+\subsubsection{Run}
+
+As with every {\emClarity} programs, you should run the next commands in the project directory. The \code{autoAlign} routine has the following signature:
+\begin{lstlisting}
+>> emClarity autoAlign <param> <stack> <rawtlt> <rot>
+\end{lstlisting}
+where \code{<param>} is the name of the parameter file, \code{<stack>} is the tilt-series to align (e.g. \code{tilt1.st}), \code{<rawtlt>} is a text file containing the raw tilt-angles (e.g. \code{tiltl1.rawtlt}), in degrees (one line per image, in the same order as in the \code{.st} file). \code{<rot>} is the image rotation (tilt-axis angle from the vertical), in degrees, as specified in {\ETomo}. This angle will vary based on the microscope and magnification, but for this tutorial it is about 176\textdegree.
+
+For example, to run \code{autoAlign} on the first tilt-series of the tutorial:
+\begin{lstlisting}
+>> emClarity autoAlign param.m tilt1.st tilt1.rawtlt 176
+\end{lstlisting}
+
+% Add maybe a note for a for loop. In my bash toolbox I have parallel for loops, so I could add this here.
+
+You may have noticed that all of the tilt-series have their first image blank. Fortunately, \code{autoAlign} can remove images from the series before alignment. For instance, to remove the first view of the first tilt-series:
+\begin{lstlisting}
+>> emClarity autoAlign param.m tilt1.st tilt1.rawtlt 176 1
+\end{lstlisting}
+and to remove the first and last view of tilt11, run:
+\begin{lstlisting}
+>> emClarity autoAlign param.m tilt1.st tilt1.rawtlt 176 [1,41]
+\end{lstlisting}
+\begin{note}For the tutorial dataset, you should remove the first view of tilt1 to tilt10 and the first and last views from tilt1 and tilt12.
+\end{note}
+
+
+\subsubsection{Outputs}
+
+{\emClarity} creates and organizes the necessary files it needs to run the next step of the workflow. You can find a description of these files in section \ref{sec:tilt_series_alignment:ETomo}. The goal here is to check whether or not the alignment is good enough to start with and the easiest way is to look at \code{fixedStacks/<prefix>\_3dfind.ali}.
+If you are familiar with {\ETomo}, then you can of course also look at the log files saved in \code{emC\_autoAlign\_<prefix>}.
+
+If for some reason you want to reconstruct the aligned tilt-series now, you can run the following command:
+\begin{lstlisting}
+>> newstack -xform <prefix>.xf <prefix>.fixed <prefix>.ali
+\end{lstlisting}
+
+
+\subsection{With {\ETomo}} \label{sec:tilt_series_alignment:ETomo}
+
+If you don't want to use \code{autoAlign}, we do recommend using the (fiducial) alignment procedure from the {\ETomo} pipeline (\href{https://bio3d.colorado.edu/imod/doc/man/autofidseed.html}{autofidseed}, {\tiltalign}, etc.). One powerful option of this pipeline is to be able to solve for a series of local alignments using subsets of fiducial points, which can then be used by {\emClarity}, via the IMOD {\tilt} program, to reconstruct the tomograms.
+
+During the alignments, you should keep an eye at the ratio of known measurements (fiducials) and unknown parameters (shifts, rotations, tilts and magnifications) you try to solve for. If this ratio is too low, it means the program is likely to accommodate random errors to solve for the model you are asking for. In face of such low ratio, you can simplify the alignment model during the refinement by grouping and/or fixing the variables (see \href{https://bio3d.colorado.edu/imod/doc/man/restrictalign.html}{restrictalign} ``OrderOfRestrictions'' for more details).
+
+You are free to use another software for the initial alignment, but it is likely to require more efforts to integrate your data into {\emClarity} (see the next \ref{sec:tilt_series_alignment:ETomo} section). We do not plan to support imports from tomography software other than IMOD in the near future.
+
+\begin{note}The \href{https://bio3d.colorado.edu/imod/betaDoc/man/batchruntomo.html}{\textbf{IMOD batchruntomo}} interface encapsulates the \href{https://bio3d.colorado.edu/imod/doc/etomoTutorial.html}{\textbf{ETomo}} pipeline and runs the operations required to align the tilt-series. To deal with low ratio, \href{https://bio3d.colorado.edu/imod/betaDoc/man/batchruntomo.html}{\textbf{batchruntomo}} is applying successive restrictions to the alignment. The default behavior is to group the rotations, then group the magnifications, then fix the tilt angles, then solve for only one rotation and then fix the magnification.
+\end{note}
+
+\begin{tip}You might have noticed that some images from the tutorial data-set are (mostly) blank. These images can be ignored during alignment (\href{https://bio3d.colorado.edu/imod/doc/etomoTutorial.html}{\textbf{ETomo}}: ``view to skip'' option). We don't recommend to remove these images from the stack as it is possible to remove them with \href{https://github.com/bHimes/emClarity}{\textbf{emClarity}} while accounting for the cumulative electron dose (section \myref{sec:defocus_estimate}).
+\end{tip}
+
+
+Once the tilt-series are aligned, you have to transfer the alignment files to {\emClarity}. Please pay careful attention to the naming conventions in this section, as there are used throughout the pipeline.
+
+For each tilt-series, {\emClarity} needs:
+
+\begin{itemize}
+    \item \code{<prefix>.fixed}: the raw (\textit{not} aligned) tilt-series. These should \textit{not} be exposure-filtered nor phase flipped. They correspond to the original \code{tilt1.mrc} to \code{tilt12.mrc} stacks available in EMPIAR. If you did any other preprocessing (X-ray removal, etc.), you should use these.
+    
+    \begin{note}While it will produce substandard results, if you have no option but to use images which are already exposure filtered, please add the following to your parameter file: \code{applyExposureFilter=0}
+    \end{note}
+    
+    \item \code{<prefix>.xf}: the file with alignment transforms to apply to the \code{<prefix>.fixed} stacks. This file should contain one line per view, each with a linear transformation specified by six numbers. The first 4 numbers is the 2x2 rotation matrix (in-plane rotation, scaling/magnification) and the last 2 numbers are the X and Y shifts (in un-binned pixels). See section \ref{sec:algo:defocus_estimate} for more details.
+    
+    If you did the alignment with {\ETomo}, it corresponds to ``OutputTransformFile'' from {\tiltalign} which is set by default to \code{<prefix>\_fid.xf} (fiducial alignment) or \code{<prefix>.xf} (fiducialess alignment).
+    
+    \item \code{<prefix>.tlt}: the file with the solved tilt angles. One line per view, angles in degrees.
+    
+    If you did the alignment with {\ETomo}, it corresponds to the ``OutputTiltFile'' from {\tiltalign}, which is by default \code{<prefix>\_fid.tlt} (fiducial alignment) or \code{<prefix>.tlt} (fiducialess alignment).
+    
+    \item \textbf{(optional)} \code{<prefix>.local}: the file of local alignments. This file is similar to the \code{<prefix>.xf} file, but contains one transformation per view and per patch, plus an additional header per patch. See the {\tiltalign} documentation for more details.
+    
+    If you did the alignment with {\ETomo}, it corresponds to the ``OutputLocalFile'' from {\tiltalign}, which is by default \code{<prefix>local.xf}.
+    
+    \item \textbf{(optional)} \code{<prefix>.erase}: the file with the coordinates (in pixel) of the fiducial beads to erase before ctf estimation. These coordinates must correspond to the aligned stack. One line should contain the x, y and z (view) coordinates of the beads you wish to remove. Alternatively, you can remove the beads from the raw \code{<prefix>.fixed} before importing them to {\emClarity}.
+    
+    If you did the alignment with {\ETomo}, it corresponds to the \code{<prefix>\_erase.fid} file.
+\end{itemize}
+
+These files should be copied to \code{<projectDir>/fixedStacks} (see section \ref{sec:project_directory}).
+
+\begin{tip}You don't necessarily need to copy the tilt-series to the \code{fixedStacks} directory; use soft links: \code{ln -s <...>/<prefix>.mrc <...>/fixedStacks/<prefix>.fixed}\end{tip}

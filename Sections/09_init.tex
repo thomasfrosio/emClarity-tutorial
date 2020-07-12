@@ -1,0 +1,25 @@
+\section{Initialize the project} \label{sec:init}
+
+\subsection{Objectives}
+This step is creating the project metadata that will be used throughout the processing. There are three main things that {\emClarity} will do. First, it will grab the sub-region coordinates in \code{/recon/<prefix>.coords}. Second, it will grab the tilt-series CTF estimate stored in \code{fixedStacks/ctf/<prefix>\_ali1\_ctf.tlt}. Lastly, it will grab the particle coordinates from \code{convmap/<prefix>\_<nb>\_<bin>.csv}. As explained in the last section, peaks can be removed from the \code{.csv} files using the corresponding \code{.mod} file.
+
+\begin{note}Once ran, these files are ignored and will not be used again. If one needs to modify some of the above-mentioned information, this step must be re-run for the modification to be effective.
+\end{note}
+
+
+\subsection{Parameters}
+
+\input{Figures_Tables/09_parameters}
+
+
+\subsection{Run}
+
+The \code{init} routine has the following signature:
+\begin{lstlisting}
+>> emClarity init <param>
+\end{lstlisting}
+where \code{<param>} is the parameter file name.
+
+\subsection{Outputs}
+
+The main output is of course the output file \code{<subTomoMeta>.mat}. This step should only take a few seconds to run and it will output to the terminal, the total number of particles and the number of particles before and after cleaning, for each sub-region.

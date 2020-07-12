@@ -1,0 +1,95 @@
+% Parameters for avg
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{| l || p{96mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{tomoCPR} parameters]{\code{tomoCPR} parameters. Your parameter file should have the following parameters. \textcolor{myred}{\textbf{*}} indicates the required parameters, \textcolor{blue}{\textbf{*}} indicates expert parameters. Expert parameters should not be changed except if you know what you are doing. The other parameters are optional.} \label{param:tomoCPR}\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Sampling}}\\
+\hline
+
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+
+-- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Current binning factor (1 means no binning). The sub-region tomograms at this given binning must be already reconstructed in the \code{cache} directory. If they aren't, you'll need to run \code{ctf 3d} before running this step.\\
+
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Fiducial alignment}}\\
+\hline
+
+-- \code{Ali\_mType}\textcolor{myred}{\textbf{*}} & Type of mask; ``cylinder'', ``sphere'', ``rectangle''.\\
+
+-- \code{particleRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] particle radius, in \si{\angstrom}. It should be the smallest values to contain particle. For particles in a lattice this parameter must correspond to the central unit.\\
+
+-- \code{Ali\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}. The mask size must be large enough to contain the entire particle (i.e. larger than \code{particleRadius}), the delocalized signal, proper apodization, and to avoid wraparound error in cross-correlation.\\
+
+-- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom}, relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
+
+-- \code{peak\_mask\_fraction} & Fraction of the \code{particleRadius} used for the alignment. This has no effect if \code{Peak\_mType} and \code{Peak\_mRadius} are defined. Default=0.4.\\
+
+-- \code{Peak\_mType} & Further restrict the translations by applying an additional mask; ``cylinder'', ``sphere'', ``rectangle''.\\
+
+-- \code{Peak\_mRadius} & Further restrict the translations to this radius. By default (0), the translations are limited by \code{particleRadius} and \code{peak\_mask\_fraction}. This has no effect if \code{Peak\_mType} is not defined and it will switch back to the default behavior.\\
+
+-- \code{tomoCprLowPass} & Low-pass filter cutoff applied to the tiles, in \si{\angstrom}. By default, it corresponds to $1.5 \times$ the current resolution and it is forced to be between 10\si{\angstrom} and 24\si{\angstrom}.\\
+
+-- \code{tomoCprDefocusRefine}\textcolor{blue}{\textbf{*}} & Refine the defocus value during alignment. This feature is experimental and we don't recommend you to use it at the moment. Default=false.\\
+
+-- \code{tomoCprDefocusRange}\textcolor{blue}{\textbf{*}} & Range of defocus to sample around the current defocus estimate, in meter.\\
+
+-- \code{tomoCprDefocusStep}\textcolor{blue}{\textbf{*}} & Defocus step, in meter.\\
+
+-- \code{min\_res\_for\_ctf\_fitting}\textcolor{blue}{\textbf{*}} & Low-pass filter cutoff applied to the tiles, in \si{\angstrom}. It replaces \code{tomoCprLowPass} in case of a defocus search. If $\sqrt{2}\code{PIXEL\_SIZE} < \code{min\_res\_for\_ctf\_fitting}$ the defocus search is turned off. Default=10.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Tilt-series alignment}}\\
+\hline
+
+-- \code{particleMass}\textcolor{myred}{\textbf{*}} & Rough estimate of the particle mass, in MDa. This is used to set the number of particles per patch. Smaller particles give less reliable alignments, so more of them are included in each patch, creating a smoother solution.\\ % Actually, why not do the opposite? the bigger the particle, the bigger the patches (because you'll have less particle/patch so you need to make them bigger to compensate)?
+
+    % I think you misunderstand. The patch size is based on the size of each particle and how many particles are in a patch. This assumes a fairly uniform distribution of particles. It is the number of particles/patch that is related to the smoothness of the local solution. A smoother solution means a stronger weight on the prior and less weight on the data. - BAH
+    
+-- \code{tomoCPR\_randomSubset} & The maximal number of particle which are going to be used as fiducials. If there is more particles available than this, a random subset of particles will be selected. Default=-1, all particles.\\
+
+-- \code{k\_factor\_scaling} & \code{KFactorScaling} from {\tiltalign}.\\ & Default=$10/\sqrt{\code{tomoCPR\_randomSubset}}$.\\
+
+-- \code{rot\_option\_global} & \code{RotOption} from {\tiltalign}. Default=1.\\
+-- \code{rot\_option\_local} & \code{LocalRotOption} from {\tiltalign}. Default=1.\\
+-- \code{rot\_default\_grouping\_local} & \code{LocalRotDefaultGrouping} from {\tiltalign}. Default=3.\\
+
+-- \code{mag\_option\_global} & \code{MagOption} from {\tiltalign}. Default=1.\\
+-- \code{mag\_option\_local} & \code{LocalMagOption} from {\tiltalign}. Default=1.\\
+-- \code{mag\_default\_grouping\_global} & \code{MagDefaultGrouping} from {\tiltalign}. Default=5.\\
+-- \code{mag\_default\_grouping\_local} & \code{LocalMagDefaultGrouping} from {\tiltalign}. Default=5.\\
+
+-- \code{tilt\_option\_global} & \code{TiltOption} from {\tiltalign}. Default=5.\\
+-- \code{tilt\_option\_local} & \code{LocalTiltOption} from {\tiltalign}. Default=5.\\
+-- \code{tilt\_default\_grouping\_global} & \code{TiltDefaultGrouping} from {\tiltalign}. Default=5.\\
+-- \code{tilt\_default\_grouping\_local} & \code{LocalTiltDefaultGrouping} from {\tiltalign}. Default=5.\\
+
+-- \code{min\_overlap} & \code{MinSizeOrOverlapXandY} from {\tiltalign}. Default=0.5.\\
+
+-- \code{shift\_z\_to\_to\_centroid} & If true/1, use the \code{ShiftZFromOriginal} entry from {\tiltalign} and set \code{AxisZShift} to 0. Default=true.\\
+
+ 
+\hline
+\multicolumn{2}{|c|}{\textbf{Others}}\\
+\hline
+
+-- \code{subTomoMeta}\textcolor{myred}{\textbf{*}} & Project name. At this step, {\emClarity} excepts to find the metadata \code{<subTomoMeta>}.mat in the project directory.\\
+
+-- \code{Raw\_className}\textcolor{myred}{\textbf{*}} & Class ID. You should leave it set to zero.\\
+-- \code{Raw\_classes\_odd}\textcolor{myred}{\textbf{*}} & This is only used to set the number of references. As the multi-reference alignment is currently disabled, you can leave it as whatever you used for the subtomogram average or set it to \code{[0;0]}.\\
+
+-- \code{Raw\_classes\_eve}\textcolor{myred}{\textbf{*}} & It should be identical to \code{Raw\_classes\_odd}.\\
+ 
+\hline
+\end{longtable}
+
+
+% rmsScale(sqrt(particleMass)) : idk about this one...
+% whitenProjections there is a fixme on this one so... ignoring it for now
+% use_MCF, false, ignoring this for now.
+
+
+

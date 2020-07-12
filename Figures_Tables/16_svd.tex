@@ -1,0 +1,67 @@
+\begin{figure}[!htb]  % Stay within section
+\captionsetup{labelfont=bf}
+\centering
+
+\begin{tikzpicture}[every node/.style={anchor=north east,minimum width=1.4cm,minimum height=7mm}]
+\matrix (mA) [draw,matrix of math nodes, fill=white]
+{
+x_{1,1,r} & x_{1,2,r} & \cdots & x_{1,p,r} \\
+x_{2,1,r} & x_{2,2,r} & \cdots & x_{2,p,r} \\
+\vdots    &  \vdots   & \ddots & \vdots    \\
+x_{v,1,r} & x_{v,2,r} & \cdots & x_{v,p,r} \\
+};
+
+\matrix (mB) [draw,matrix of math nodes, fill=white] at ($(mA.south west)+(4.6,1.3)$)
+{
+x_{1,1,2} & x_{1,2,2} & \cdots & x_{1,p,2} \\
+x_{2,1,2} & x_{2,2,2} & \cdots & x_{2,p,2} \\
+\vdots    &  \vdots   & \ddots & \vdots    \\
+x_{v,1,2} & x_{v,2,2} & \cdots & x_{v,p,2} \\
+};
+
+\matrix (mC) [draw,matrix of math nodes, fill=white] at ($(mB.south west)+(4.6,1.3)$)
+{
+x_{1,1,1} & x_{1,2,1} & \cdots & x_{1,p,1} \\
+x_{2,1,1} & x_{2,2,1} & \cdots & x_{2,p,1} \\
+\vdots    &  \vdots   & \ddots & \vdots    \\
+x_{v,1,1} & x_{v,2,1} & \cdots & x_{v,p,1} \\
+};
+
+\draw[dashed](mA.north east)--(mC.north east);
+\draw[dashed](mA.south east)--(mC.south east);
+
+% Basis
+\draw[arrow](mC.north west)--(mA.north west) node[midway,sloped,above] {$r$ length scales};
+\draw[arrow](mC.north west)--(mC.south west) node[midway,sloped,below] {$v$ voxels};
+\draw[arrow](mA.north west)--(mA.north east) node[midway,sloped,above] {$p$ particles};
+
+% fill opacity=0
+% Example of difference maps
+\node (rect1) at ($(mC)+(-1.5,1.42)$) [draw,minimum width=1.2cm,minimum height=2.85cm] {};
+\node[below=0.5cm of rect1] (txt1) {$\bm{X}_{1,1}$};
+\draw[arrow3](rect1.south)--(txt1.north);
+
+\node (rect2) at ($(mC)+(-0.1,1.42)$) [draw,minimum width=1.2cm,minimum height=2.85cm] {};
+\node[below=0.5cm of rect2] (txt2) {$\bm{X}_{2,1}$};
+\draw[arrow3](rect2.south)--(txt2.north);
+
+% draw arrow for SVD
+\node[right=3.8cm of mA] (svdr) {$\bm{U}_r \bm{S}_r \bm{V}_{r}^{T}$};
+\draw[arrow3](mA.east)--(svdr.west) node[below, midway] {decompose} (svdr);
+\draw[dashed](svdr.east)--($(svdr.east)+(1.8,0)$);
+
+\node[right=3.8cm of mB] (svd2) {$\bm{U}_2 \bm{S}_2 \bm{V}^{T}_{2}$};
+\draw[arrow3](mB.east)--(svd2.west) node[below, midway] {decompose} (svd2);
+\draw[dashed](svd2.east)--($(svd2.east)+(3.1,0)$);
+
+\node[right=3.8cm of mC] (svd1) {$\bm{U}_1 \bm{S}_1 \bm{V}^{T}_{1}$};
+\draw[arrow3](mC.east)--(svd1.west) node[below, midway] {decompose} (svd1);
+\draw[dashed](svd1.east)--($(svd1.east)+(4.4,0)$);
+
+% \draw[arrow3]($(mC.south east)+(0.2,0)$)--($(mC.south east)+(0.2,1.94)$);
+
+\end{tikzpicture}
+
+\caption[Singular Value Decomposition]{Singular Value Decomposition of the difference maps $p$, for each length scale $r$. The features, i.e. the voxels, are organized in rows. As such, $\bm{U}$ contains the right singular vectors, i.e. the principal directions/axes, $\bm{V}^T$ contains the left singular vectors. Consequently, $\bm{SV}^{T}$ are the principal components.}
+\label{fig:svd}
+\end{figure}

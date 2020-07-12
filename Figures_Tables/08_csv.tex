@@ -1,0 +1,24 @@
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[c]{| l | p{29mm} || l | p{29mm} || l | p{29mm} || l | p{29mm} |}
+\captionsetup{labelfont=bf}
+\caption[\code{convmap/<prefix>\_<region>\_bin<X>.csv}]{\code{convmap\_wedgeType\_2\_bin<X>/<prefix>\_<region>\_bin<X>.csv}. One line per particle $p$. The translations ($\bm{T}_x$, $\bm{T}_y$, $\bm{T}_z$) are in pixel, un-binned. The Euler angles ($\phi$, $\theta$, $\psi$) are described in section \ref{sec:algo:euler_conventions}. They are actually not directly used by {\emClarity}. As mentioned previously, the rotation matrices ($\bm{R}_{m,n}$, $m=$ rows, $n=$ columns) are meant to be applied to the particles to rotate them from the microscope frame to the reference frame. In this case, the translations are applied before the rotation.} \label{tab:csv}\\
+
+\hline
+\textbf{C} & \textbf{Description} & \textbf{C} & \textbf{Description} & \textbf{C} & \textbf{Description} & \textbf{C} & \textbf{Description}\\
+\hline
+1 & $\bm{\mathrm{CC}}_p$                & 8 & \cellcolor{lightgray} empty (1)     & 15 & $\theta_p$                & 22 & ${[\bm{R}_{32}]}_p$\\
+\hline
+2 & \code{Tmp\_sampling}                & 9 & \cellcolor{lightgray} empty (1)     & 16 & $\psi_p$                 & 23 & ${[\bm{R}_{13}]}_p$\\
+\hline
+3 & \cellcolor{lightgray} empty (0)     & 10 & \cellcolor{lightgray} empty (0)    & 17 & ${[\bm{R}_{11}]}_p$      & 24 & ${[\bm{R}_{23}]}_p$\\
+\hline
+4 & Unique ID, $p$                      & 11 & ${[\bm{T}_x]}_p$                   & 18 & ${[\bm{R}_{21}]}_p$      & 25 & ${[\bm{R}_{33}]}_p$\\
+\hline
+5 & \cellcolor{lightgray} empty (1)     & 12 & ${[\bm{T}_y]}_p$                   & 19 & ${[\bm{R}_{31}]}_p$      & 26 & \cellcolor{lightgray} Class (1)\\
+\hline
+6 & \cellcolor{lightgray} empty (1)     & 13 & ${[\bm{T}_z]}_p$                   & 20 & ${[\bm{R}_{12}]}_p$      & \cellcolor{lightgray} & \cellcolor{lightgray}\\
+\hline
+7 & \cellcolor{lightgray} empty (1)     & 14 & $\phi_p$                           & 21 & ${[\bm{R}_{22}]}_p$      & \cellcolor{lightgray} & \cellcolor{lightgray}\\
+\hline
+
+\end{longtable}

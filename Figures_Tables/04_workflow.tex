@@ -1,0 +1,90 @@
+
+\begin{figure}[!htb]  % Stay within section
+\captionsetup{labelfont=bf}
+\centering
+
+\begin{center}
+\begin{tikzpicture}[node distance=2cm]
+
+% Specification of nodes
+
+\node (j1) [job, text width=4cm, align=center] {Align tilt-series\\ \hyperref[sec:defocus_estimate]{\textit{ctf estimate}}, \hyperref[sec:tomoCPR]{\textit{ctf update}}};
+
+\node (j2) [job, below of=j1, text width=4cm, align=center] {Defocus estimate\\ \hyperref[sec:defocus_estimate]{\textit{ctf estimate}}};
+
+\node (j3) [job, below of=j2] {Define sub-regions};
+
+\node (j4) [job, below of=j3, text width=4cm, align=center] {Picking\\ \hyperref[sec:picking]{\textit{templateSearch}}};
+
+\node (j5) [job, below of=j4, text width=4cm, align=center] {Initialize project\\ \hyperref[sec:init]{\textit{init}}};
+
+\node (j6) [job, below of=j5, text width=4cm, align=center] {Tomogram reconstruction\\ \hyperref[sec:ctf_3d]{\textit{ctf 3d}}};
+
+\node (j7) [job, right of=j6, xshift=4cm, text width=4cm, align=center] {Subtomogram average\\ \hyperref[sec:avg]{\textit{avg RawAlignment}}};
+
+\node (j8) [chimera, right of=j5, xshift=8cm, text width=4cm, align=center] {Classification\\ \hyperref[sec:classification]{\textit{pca}}, \hyperref[sec:classification]{\textit{cluster}}};
+
+\node (j9) [job, right of=j4, xshift=4cm, text width=4cm, align=center] {Subtomogram alignment\\ \hyperref[sec:align]{\textit{alignRaw}}};
+
+\node (j10) [chimera, right of=j1, xshift=4cm, text width=4cm, align=center] {Tilt-series refinement\\ \hyperref[sec:tomoCPR]{\textit{tomoCPR}}};
+
+% Add tilt-series alignment
+\node (j0bis) [job, above of=j10, text width=4cm, align=center] {Tilt-series alignment\\ with \hyperref[sec:tilt_series_alignment:emClarity]{\textit{ETomo}}};
+
+\node (j0) [job, above of=j0bis, text width=4cm, align=center] {Tilt-series alignment\\ with \hyperref[sec:tilt_series_alignment:emClarity]{\textit{autoAlign}}};
+
+\node (or) at ($(j0bis)+(0,1cm)$) [fill opacity=1] {or};
+
+% Add final reconstruction
+\node (between_j11_j11bis) [below of=j7, fill opacity=0] {};
+
+\node (j11) at ($(between_j11_j11bis)+(-3cm,0cm)$) [job, text width=4cm, align=center] {Final reconstruction\\ \hyperref[sec:final_map]{\textit{avg FinalAlignment}}};
+
+\node (j11bis) at ($(between_j11_j11bis)+(+3cm,0cm)$) [job, text width=4cm, align=center] {Final reconstruction\\ \hyperref[sec:final_map]{\textit{reconstruct}} (with {\cisTEM})};
+
+%% ARROWS
+
+% Specification of arrows
+\draw [arrow] (j1) -- (j2);
+\draw [arrow] (j2) -- (j3);
+\draw [arrow] (j3) -- (j4);
+\draw [arrow] (j4) -- (j5);
+\draw [arrow] (j5) -- (j6);
+\draw [arrow] (j6) -- (j7);
+
+% Average - Alignment
+\draw [arrow] ($(j7.north)+(0.5,0)$) -- ($(j9.south)+(0.5,0)$);
+\draw [arrow] ($(j9.south)+(-0.5,0)$) -- ($(j7.north)+(-0.5,0)$);
+
+% Connect Classification
+\draw [dashed, arrow] ($(j7.east)$) -| ($(j8.south)$) ;
+\draw [dashed, arrow] ($(j8.north)$) |- ($(j9.east)$) ;
+
+% Refine picking
+\draw [dashed, arrow] (j9) -- (j4);
+
+% Refine tilt-series
+\draw [dashed, arrow] (j9) -- (j10);
+\draw [dashed, arrow] (j10) -- (j1);
+\draw [dashed, arrow] (j1) -- ($(j1.west)+(-1,0)$) |- ($(j6.west)$);
+
+% Tilt-series alignment
+\node (inv) at ($(or)+(-4cm,0cm)$) [fill opacity=0] {};
+\draw [line] ($(j0.west)$) -| ($(inv)+(0,-0.1cm)$);
+\draw [line] ($(j0bis.west)$) -| ($(inv)+(0,+0.1cm)$);
+\draw [arrow] ($(inv)+(0.15mm,0)$) -| (j1.north);
+
+% Final reconstruction
+\draw [arrow] (j7.south) |- (j11.east);
+\draw [arrow] (j7.south) |- (j11bis.west);
+
+% Notes
+\fill [myred, opacity=1] ($(j4.east)+(0,0.5)$) circle (0.2);
+
+
+\end{tikzpicture}
+\end{center}
+
+\caption[{\emClarity} workflow]{{\emClarity} workflow. The classification and tilt-series refinement steps are optional. The red marker indicates the possibility to import data from other software (section \ref{sec:picking:import} for more details).}
+\label{fig:emClarity_workflow}
+\end{figure}

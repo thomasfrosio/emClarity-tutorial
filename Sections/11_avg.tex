@@ -1,0 +1,34 @@
+\section{Subtomogram averaging} \label{sec:avg}
+
+\subsection{Objectives}
+
+Once the tomograms are generated, {\emClarity} can calculate the subtomogram averages, one for each half-set. A volume-normalized single-particle Wiener (SPW) filter \cite{volume_normalized_SPW} will minimize the reconstruction error of the particle density by applying an ``optimal'' (low-pass) filter and correcting for all of the systematic changes to the signal imposed by the microscope and image processing algorithms on the reconstructions.
+
+\begin{note}This filter is optimum as long as we correctly estimate the Signal-to-Noise Ratio of the two subtomogram averages (one for each half-set). This estimate depends on the conical Fourier shell correlation described in \myref{sec:algo:avg}.
+\end{note}
+
+\subsection{Parameters}
+
+\input{Figures_Tables/11_parameters}
+
+\subsection{Run}
+
+To call the subtomogram averaging procedure:
+\begin{lstlisting}
+>> emClarity avg <param.m> <cycle_nb> RawAlignment
+\end{lstlisting}
+
+where \code{<param.m>} is the parameter file you want to use for this cycle, \code{<cycle\_nb>} is the cycle number, starting from 0. Each cycle starts with this step and is usually followed by the subtomogram alignment procedure. \code{RawAlignment} indicates to {\emClarity} that we want to calculate the subtomogram average of the entire half-set. As we'll see later, it is also possible to compute one average (one cluster) for each class.
+
+If you suspect some density is being omitted by the molecular mask or if you see extra "dust" outside your particle, you play with the \code{shape\_mask\_*} parameters. If you want to only calculate the mask, you can run the following, with \code{shape\_mask\_test=1}:
+\begin{lstlisting}
+>> emClarity fsc <param.m> <cycle_nb> RawAlignment
+\end{lstlisting}
+
+\subsection{Outputs}
+
+The two subtomogram averages (half-maps) are saved into the project directory, as:\\ \code{cycleXXX\_projectName\_class0\_REF\_EVE.mrc}, and\\ \code{cycleXXX\_projectName\_class0\_REF\_ODD.mrc}.
+
+The FSC is saved in \code{FSC/cycleXXX\_projectName\_Raw-1-fsc\_GLD.pdf}. The corresponding \code{.txt} file constains the FSC values. The first column is the resolution, in \si{\angstrom}\textsuperscript{-1}. The second column contains the Correlation Coefficients (CCs). The other 36 columns contain the CCs for each FSC cones.
+
+For more details about the outputs, see \ref{sec:algo:avg}.

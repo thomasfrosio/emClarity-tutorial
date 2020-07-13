@@ -17,8 +17,9 @@ jobs:
         git config --global user.email ffyr2w@users.noreply.github.com
         git pull
     
+    - run: file emClarity-tutorial.pdf | grep -q ' PDF '
     - name: remove pdf if it is there
-      if: file emClarity-tutorial.pdf | grep -q ' PDF '
+      if: success()
       run: |
         echo "emClarity-tutorial.pdf is there. Deleting it..."
         git rm emClarity-tutorial.pdf

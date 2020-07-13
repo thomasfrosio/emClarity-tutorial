@@ -11,27 +11,28 @@ jobs:
     - name: Set up Git repository
       uses: actions/checkout@v2
 
+    - name: Set global and remove compiled pdf
+      run: |
+        git config --global user.name ffyr2w
+        git config --global user.email ffyr2w@users.noreply.github.com
+        git pull
+    
+    - name: remove pdf if it is there
+      if: file emClarity-tutorial.pdf | grep -q ' PDF '
+      run: |
+        echo "emClarity-tutorial.pdf is there. Deleting it..."
+        git rm emClarity-tutorial.pdf
+
     - name: Github Action for LaTeX
       uses: xu-cheng/latex-action@v2
       with:
         root_file: emClarity-tutorial.tex
-        pre_compile: |
-          git config --global user.name ffyr2w
-          git config --global user.email ffyr2w@users.noreply.github.com
-          git pull
-          git rm emClarity-tutorial.pdf
-        post_compile: |
-          git add emClarity-tutorial.pdf
-          git commit -m "Automated upload"
-          git push origin master
 
-#     - name: Upload pdf to the master branch
-#       run: |
-#         git config --global user.name ffyr2w
-#         git config --global user.email ffyr2w@users.noreply.github.com
-#         git add emClarity-tutorial.pdf
-#         git commit -m "Automated upload"
-#         git push origin master
+    - name: Upload pdf to the master branch
+      run: |
+        git add emClarity-tutorial.pdf
+        git commit -m "Automated upload"
+        git push origin master
         
 #     - name: Upload artifact
 #       uses: actions/upload-artifact@gh-pages

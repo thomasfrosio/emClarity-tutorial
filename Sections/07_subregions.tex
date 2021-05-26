@@ -38,7 +38,7 @@ You may notice as we go through this tutorial that we often thinks in term of su
 % This is not accurate. -BAH
  %   \begin{note}Each sub-regions will need to be transferred to GPU memory. Therefore, you should be careful not to %select too big sub-regions as there might not be enough memory to hold them, especially at bin 1. If the particles %of interest are homogeneously spread, we recommend to divide the field of view into 2 equal sub-regions.
  %   \end{note}
-    \begin{note}Each sub-region is kept on disk, and only individual sub-tomograms are read in from them, reducing the amount of GPU memory needed. Due to the way MRC files are stored, the disk access can become slow when a given sub-region is very large, therefore, you should be careful not to select too big sub-regions as it can slow down processing. 
+    \begin{note}Each sub-region is kept on disk, and only individual sub-tomograms are read in from them, reducing the amount of GPU memory needed. emClarity parallelizes jobs on a sub-region level. As such, dividing a tomogram into multiple smaller sub-regions might be more efficient down the line. This is especially true for sub-tomogram alignment (section \myref{sec:align}) and tilt-series refinement (section \myref{sec:tomoCPR}) since emClarity can distribute jobs across multiple servers.
     \end{note}
 
     \item This \code{bin10} directory is not directly used by {\emClarity}. You'll need to convert the \code{*.mod} files you just created into something {\emClarity} understands. You can do this on the first stack by running:

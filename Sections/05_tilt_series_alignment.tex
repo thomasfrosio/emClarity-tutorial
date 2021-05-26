@@ -23,31 +23,36 @@ As with every {\emClarity} programs, you should run the next commands in the pro
 \begin{lstlisting}
 >> emClarity autoAlign <param> <stack> <rawtlt> <rot>
 \end{lstlisting}
-where \code{<param>} is the name of the parameter file, \code{<stack>} is the tilt-series to align (e.g. \code{tilt1.st}), \code{<rawtlt>} is a text file containing the raw tilt-angles (e.g. \code{tiltl1.rawtlt}), in degrees (one line per image, in the same order as in the \code{.st} file). \code{<rot>} is the image rotation (tilt-axis angle from the vertical), in degrees, as specified in {\ETomo}. This angle will vary based on the microscope and magnification, but for this tutorial it is about 176\textdegree.
+where \code{<param>} is the name of the parameter file, \code{<stack>} is the tilt-series to align (e.g. \code{tilt1.st}), \code{<rawtlt>} is a text file containing the raw tilt-angles (e.g. \code{tiltl1.rawtlt}), in degrees (one line per image, in the same order as in the \code{.st} file). \code{<rot>} is the image rotation (tilt-axis angle from the vertical), in degrees, as specified in {\ETomo}. This angle will vary based on the microscope and magnification, but for this tutorial it is about 175\textdegree.
 
 For example, to run \code{autoAlign} on the first tilt-series of the tutorial:
 \begin{lstlisting}
->> emClarity autoAlign param.m tilt1.st tilt1.rawtlt 176
+>> emClarity autoAlign param.m tilt1.st tilt1.rawtlt 175
 \end{lstlisting}
 
 % Add maybe a note for a for loop. In my bash toolbox I have parallel for loops, so I could add this here.
 
 You may have noticed that all of the tilt-series have their first image blank. Fortunately, \code{autoAlign} can remove images from the series before alignment. For instance, to remove the first view of the first tilt-series:
 \begin{lstlisting}
->> emClarity autoAlign param.m tilt1.st tilt1.rawtlt 176 1
+>> emClarity autoAlign param.m tilt1.st tilt1.rawtlt 175 1
 \end{lstlisting}
 and to remove the first and last view of tilt11, run:
 \begin{lstlisting}
->> emClarity autoAlign param.m tilt11.st tilt11.rawtlt 176 [1,41]
+>> emClarity autoAlign param.m tilt11.st tilt11.rawtlt 175 [1,41]
 \end{lstlisting}
-\begin{note}For the tutorial dataset, you should remove the first view of tilt1 to tilt10 and the first and last views from tilt11 and tilt12.
+\begin{note}For the tutorial dataset, you should remove the first view of tilt1 to tilt10 and the first and last views from tilt11 and tilt12. Also, the refinement using fiducial beads doesn't produce satisfying results for tilt5, tilt6 and tilt8. As such, the \code{autoAli\_refine\_on\_beads} was turned off for these tilt-series.
 \end{note}
 
 
 \subsubsection{Outputs}
 
-{\emClarity} creates and organizes the necessary files it needs to run the next step of the workflow. You can find a description of these files in section \ref{sec:tilt_series_alignment:ETomo}. The goal here is to check whether or not the alignment is good enough to start with and the easiest way is to look at \code{fixedStacks/<prefix>\_3dfind.ali}.
-If you are familiar with {\ETomo}, then you can of course also look at the log files saved in \code{emC\_autoAlign\_<prefix>}.
+{\emClarity} creates and organizes the necessary files it needs to run the next step of the workflow. You can find a description of these files in section \ref{sec:tilt_series_alignment:ETomo}. The goal here is to check whether or not the alignment is good enough to start with and the easiest way is to look at \code{fixedStacks/<prefix>\_3dfind.ali} or \code{fixedStacks/<prefix>\_binX.ali}.
+If you are familiar with {\ETomo}, then you can of course also look at the log files saved in \code{emC\_autoAlign\_<prefix>}. For instance, to visually check the fiducial beads:
+\begin{lstlisting}
+>> 3dmod \
+emC_autoAlign_<prefix>/<prefix>_X_3dfind.ali \
+emC_autoAlign_<prefix>/<prefix>_X_fitbyResid_X.fid
+\end{lstlisting}
 
 If for some reason you want to reconstruct the aligned tilt-series now, you can run the following command:
 \begin{lstlisting}

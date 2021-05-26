@@ -26,10 +26,16 @@
 -- \code{flg2dCTF}\textcolor{blue}{\textbf{*}} & Whether or not the CTF correction should correct for the defocus gradients along the electron beam (thickness of the specimen). If 1, only one $z$ section is used. See section \ref{sec:algo:ctf_3d:defocus_step} for more details.\\
 
 \hline
-\multicolumn{2}{|c|}{\textbf{Exposure filter}}\\
+\multicolumn{2}{|c|}{\textbf{Others}}\\
 \hline
 
+-- \code{erase\_beads\_after\_ctf} & Whether or not the fiducial beads should be removed before or after CTF multiplication. Default=\code{false}.\\
+
 -- \code{applyExposureFilter} & Whether or not the exposure filter should be applied. If you turn it off, make sure it is turned-off during subtomogram averaging as well.\\
+
+-- \code{super\_sample}\textcolor{blue}{\textbf{*}} & Compute the back projection in a slice larger by the given integer factor (max=8) in each dimension, by interpolating the projection data at smaller intervals ("super-sampling"). This corresponds to the \code{SuperSampleFactor} entry from {\tilt}. Default=\code{0}.\\
+
+-- \code{expand\_lines}\textcolor{blue}{\textbf{*}} & If \code{super\_sample} is greater than 0, expand projection lines by Fourier padding (sync interpolation) when super-sampling, which will preserve higher frequencies better but increase memory needed. This corresponds to the \code{ExpandInputLines} entry from {\tilt}.Default=\code{0}\\
 
 \hline
 \end{longtable}

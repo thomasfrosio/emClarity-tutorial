@@ -33,11 +33,11 @@
 
 -- \code{tomoCprLowPass} & Low-pass filter cutoff applied to the tiles, in \si{\angstrom}. By default, it corresponds to $1.5 \times$ the current resolution and it is forced to be between 10\si{\angstrom} and 24\si{\angstrom}.\\
 
--- \code{tomoCprDefocusRefine}\textcolor{blue}{\textbf{*}} & Refine the defocus value during alignment. This feature is experimental and we don't recommend you to use it at the moment. Default=false.\\
+-- \code{tomoCprDefocusRefine}\textcolor{myred}{\textbf{*}} & Refine the defocus value during alignment. This feature is experimental and we don't recommend you to use it at the moment. Default=false.\\
 
--- \code{tomoCprDefocusRange}\textcolor{blue}{\textbf{*}} & Range of defocus to sample around the current defocus estimate, in meter.\\
+-- \code{tomoCprDefocusRange}\textcolor{myred}{\textbf{*}} & Range of defocus to sample around the current defocus estimate, in meter.\\
 
--- \code{tomoCprDefocusStep}\textcolor{blue}{\textbf{*}} & Defocus step, in meter.\\
+-- \code{tomoCprDefocusStep}\textcolor{myred}{\textbf{*}} & Defocus step, in meter.\\
 
 -- \code{min\_res\_for\_ctf\_fitting}\textcolor{blue}{\textbf{*}} & Low-pass filter cutoff applied to the tiles, in \si{\angstrom}. It replaces \code{tomoCprLowPass} in case of a defocus search. If $\sqrt{2}\code{PIXEL\_SIZE} < \code{min\_res\_for\_ctf\_fitting}$ the defocus search is turned off. Default=10.\\
 

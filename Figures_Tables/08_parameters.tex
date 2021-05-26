@@ -1,6 +1,6 @@
-% Parameters for ctf estimate
+% Parameters for template matching
 \renewcommand{\arraystretch}{1.2}
-\begin{longtable}[l]{| l || p{120mm} |}
+\begin{longtable}[l]{| l || p{80mm} |}
 \captionsetup{labelfont=bf}
 \caption[\code{templateSearch} parameters]{\code{templateSearch} parameters.  Your parameter file should have the following parameters.\\ \textcolor{myred}{\textbf{*}} indicates the required parameters, \textcolor{blue}{\textbf{*}} indicates expert parameters. Expert parameters should not be changed except if you know what you are doing. The other parameters are optional.}\\
 
@@ -8,34 +8,66 @@
 \multicolumn{2}{|c|}{\textbf{Sampling}}\\
 \hline
 
--- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+-- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Should match the header of the stacks in \code{fixedStacks/*.fixed}.\\
 -- \code{Tmp\_samplingRate}\textcolor{myred}{\textbf{*}} & Sampling (i.e. binning) at which the sub-region should be reconstructed to perform the template matching (1 means no binning). The sampling rate should be chosen to give a running pixel size between 8 and 12\si{\angstrom}/pix.\\
+
+\hline
+\multicolumn{2}{|c|}{\textbf{Tomogram reconstruction}}\\
+\hline
+
+-- \code{erase\_beads\_after\_ctf} & Whether or not the fiducial beads should be removed before or after CTF multiplication. Default=\code{0}.\\
+
+-- \code{beadDiameter}\textcolor{myred}{\textbf{*}} & Bead diameter in \si{\angstrom}.\\
+
+-- \code{applyExposureFilter} & Whether or not the exposure filter should be applied. If you turn it off, make sure it is turned-off during subtomogram averaging as well.\\
+
+-- \code{super\_sample}\textcolor{blue}{\textbf{*}} & Compute the back projection in a slice larger by the given integer factor (max=8) in each dimension, by interpolating the projection data at smaller intervals ("super-sampling"). This corresponds to the \code{SuperSampleFactor} entry from {\tilt}. Default=\code{0}.\\
+
+-- \code{expand\_lines}\textcolor{blue}{\textbf{*}} & If \code{super\_sample} is greater than 0, expand projection lines by Fourier padding (sync interpolation) when super-sampling, which will preserve higher frequencies better but increase memory needed. This corresponds to the \code{ExpandInputLines} entry from {\tilt}. Default=\code{0}.\\
+
+-- \code{whitenPS}\textcolor{blue}{\textbf{*}} & TODO. Default=\code{[0,0,0]}\\
+
+% invertDose
+% flgDampenAliasedFrequencies
+% lowResCut = this is deprecated apparently. so I guess default to 12?
+% SuperResolution is required...
+
+\hline
+\newpage
 
 \hline
 \multicolumn{2}{|c|}{\textbf{Particle}}\\
 \hline
 
 -- \code{particleRadius}\textcolor{myred}{\textbf{*}} & Particle radii, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. In this context, it defines a region around a cross-correlation peak to remove from consideration after a particle is selected. See \code{Peak\_mRadius} for more details.\\
+
 -- \code{Ali\_mRadius}\textcolor{myred}{\textbf{*}} & Alignment mask radii, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. In this case, it is used to pad/trim the template to this size.\\
+
+-- \code{Peak\_mType} & Type (i.e. shape) of the cross-correlation peaks. Can be sphere, cylinder or rectangle. See section \ref{sec:algo:picking} for more details. Default=sphere.\\
+
+-- \code{Peak\_mRadius} & Radius of the cross-correlation peaks, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. See section \ref{sec:algo:picking} for more details. Default= $0.75\times\code{particleRadius}$.\\
+
+-- \code{diameter\_fraction\_for\_local\_stats} & TODO. Default=\code{1}.\\
 
 \hline
 \multicolumn{2}{|c|}{\textbf{Template matching}}\\
 \hline
 
--- \code{Tmp\_angleSearch}\textcolor{myred}{\textbf{*}} & Angular search, in degrees. Format is [$\Theta_{out},\ \Delta_{out},\ \Theta_{in},\ \Delta_{out}$]. For example, [$180,\ 15,\ 180,\ 12$], specifies a $\pm$180\textdegree\ out of plane search (polar and azimuth angles) with 15\textdegree\ steps and $\pm$180\textdegree\ in plane search (planar angles) with 12\textdegree\ steps.
+--\code{symmetry}\textcolor{myred}{\textbf{*}} & Symmetry of the partiles, used to restrict the angular search to the strict necessary and helps to reduce wedge bias by randomizing detected angles to one withing the symmetry group. E.g. C1, C2, .., CX, O, I) (see section \ref{sec:algo:picking:extract_peaks}.\\
 
-If you have a particle with C6 symmetry (with the symmetry axis corresponding to the Z-axis) you might search a more limited range, like [$180,\ 15,\ 36,\ 9$], but for particles like ribosomes, there are no real constraints on the orientation, so searching a full grid in 12 to 15 degree increments is required.\\
+-- \code{Tmp\_angleSearch}\textcolor{myred}{\textbf{*}} & Angular search, in degrees. Format is [$\Theta_{out},\ \Delta_{out},\ \Theta_{in},\ \Delta_{out}$]. For example, [$180,\ 15,\ 180,\ 12$], specifies a $\pm$180\textdegree\ out of plane search (polar and azimuth angles) with 15\textdegree\ steps and $\pm$180\textdegree\ in plane search (planar angles) with 12\textdegree\ steps. Depending on the \code{symmetry}, the search will be restrained if the specified range is outside of the unique set of angles.\\
 
---\code{Tmp\_threshold}\textcolor{myred}{\textbf{*}} & Number of particle to pick. This will be override by the command line argument \code{<threshold>} (section \ref{sec:picking:run}).\\
---\code{Tmp\_targetSize} & Size, in pixel, of the chunk to process. If the sub-region is too big, the processing will be split into individual chunks. Format is [$X, Y, Z$]. Default=[$512,\ 512,\ 512$].\\
---\code{lowResCut} & The sub-region is filtered before performing the template search and this defines the resolution (in \si{\angstrom}) at which the Gaussian low-pass cutoff begins. Default=estimate of the frequency at which the CTF first goes to zero.\\
+--\code{Tmp\_threshold}\textcolor{myred}{\textbf{*}} & Estimate of the number of particles. From this value a score threshold will be calculated that should result in fewer false positives (estimated to ~10\%) and allows to pick for up to 2x this estimate. If there are significant departures from Gaussian noise (e.g. carbon edge) this may fail.\\
+
+--\code{Override\_threshold\_and\_return\_N\_peaks} & Overrides \code{Tmp\_threshold} and select the specified highest scoring peaks.\\
+
+--\code{Tmp\_targetSize} & Size, in pixel, of the chunk to process. If the sub-region is too big, the processing will be split into individual chunks. Format is [$X, Y, Z$]. Default=\code{[512,512,512]}.\\
+
+--\code{Tmp\_bandpass} & A band-pass filter is applied to the template and the tomogram. This parameter defined the band-pass filter. Should be vector of 3 values, aka [1,2,3]. (1) is the filter value at the DC (i.e. zero) frequency, between 0 and 1. (2) is the high-pass cutoff (where the pass is back to 1) in \si{\angstrom}. (3) is the low-pass cutoff (where the pass starts to roll off) in \si{\angstrom}. (2) should be larger than (3). Default=\code{[1e-3,600,28]}.\\
+
+--\code{rescale\_mip} & TODO. Default=\code{1}.\\
+
 % --\code{Tmp\_medianFilter} & Apply a median filter to the sub-region before computing the cross-correlation. It defines the size of the kernel, either 3, 5 or 7. Default=false.\\
-\hline
-\multicolumn{2}{|c|}{\textbf{Cross-correlation}}\\
-\hline
-
---\code{Peak\_mType} & Type (i.e. shape) of the cross-correlation peaks. Can be sphere, cylinder or rectangle. See section \ref{sec:algo:picking} for more details. Default=sphere.\\
---\code{Peak\_mRadius} & Radius of the cross-correlation peaks, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. See section \ref{sec:algo:picking} for more details. Default= $0.75\times\code{particleRadius}$.\\
 
 \hline
 \end{longtable}

@@ -11,7 +11,7 @@ It's time to pick the particles, i.e. the subtomograms. There are many ways to p
 \subsection{Run} \label{sec:picking:run}
 
 \subsubsection{Preparing the template}
-Before running the \code{templateSearch}, you need to prepare a template. This template should have the same pixel size as the \code{PIXEL\_SIZE} parameter. It doesn't need to be low-pass filter, as {\emClarity} will do it internally. If you want to re-scale a map, you can run:
+Before running \code{templateSearch}, you need to prepare a template. This template should have the same pixel size as the \code{PIXEL\_SIZE} parameter. It doesn't need to be low-pass filter, as {\emClarity} will do it internally. If you want to re-scale a map, you can run:
 \begin{lstlisting}
 >> emClarity rescale <in> <out> <inPixel> <OutPixel> <method>
 \end{lstlisting}
@@ -21,20 +21,28 @@ Before running the \code{templateSearch}, you need to prepare a template. This t
 \begin{note}We do provide a \href{https://github.com/bHimes/emClarity}{template} for this tutorial, but any 70S ribosome map should work.
 \end{note}
 
+\subsubsection{Generating the tomograms}
+
+The tomograms use for the template matching are CTF multiplied as described in section \ref{sec:ctf_3d} and \ref{sec:algo:ctf_3d}. To generate them, simply run:
+\begin{lstlisting}
+>> emClarity ctf 3d <param> templateSearch
+\end{lstlisting}
+This will generate a tomogram for every subregion defined in the \code{recon/*.coords} files (table \ref{tab:recon_coords}).
+
 \subsubsection{Template matching}
 
 The \code{templateSearch} routine has the following signature:
 \begin{lstlisting}
->> emClarity templateSearch <param> <prefix> <region> <template> <symmetry> <threshold> <GPU>
+>> emClarity templateSearch <param> <prefix> <region> <template> <symmetry> <GPU>
 \end{lstlisting}
-\code{<param>} is the name of the parameter file, \code{<prefix>} is the base-name of the tilt-series in \code{<projectDir>/aliStacks} to process. \code{<region>} is the number of the sub-region to process (see section \ref{sec:subregions}). If you have symmetry, C6 for example, \code{<symmetry>} should be 6. This will randomize the Euler angles to any one of the symmetry related positions, which helps to reduce wedge bias. At the same time, you can reduce in the in-plane search range $\Theta_{in}$ with the \code{Tmp\_angleSearch} parameter to $\sim$36\textdegree. For ribosomes, it should be 1. \code{<threshold>} corresponds to the \code{<Tmp\_threshold>} parameter and \code{<GPU>} is the GPU ID to use (starting from 1).
+\code{<param>} is the name of the parameter file, \code{<prefix>} is the base-name of the tilt-series in \code{<projectDir>/aliStacks} to process. \code{<region>} is the number of the sub-region to process (see section \ref{sec:subregions}). \code{<symmetry>} is not used but kept for backward compatibility. The \code{symmetry} parameter specified in the parameter file overrides whatever is entered on the command line. \code{<GPU>} is the GPU ID to use (starting from 1).
 
 For example, to run \code{templateSearch} on the first tilt-series of the tutorial, where we defined 2 sub-regions:
 \begin{lstlisting}
 # First region
->> emClarity templateSearch param.m tilt1 1 template.mrc 1 300 1
+>> emClarity templateSearch param.m tilt1 1 template.mrc C1 1
 # Second region
->> emClarity templateSearch param.m tilt1 2 template.mrc 1 300 1
+>> emClarity templateSearch param.m tilt1 2 template.mrc C1 1
 \end{lstlisting}
 
 \subsection{Outputs}

@@ -21,6 +21,8 @@
 
 -- \code{beadDiameter} & Diameter of the beads to erase, in meters (e.g. 10e-9). This parameter is used if fiducial beads need to be erased, thus only for stacks with a \code{fixedStacks/*.erase} file.\\
 
+-- \code{erase\_beads\_after\_ctf} & Whether or not the fiducial beads should be removed on the raw tilt-series (now) or on the CTF multiplied tilt-series computed during the tomogram reconstruction (section \ref{sec:ctf_3d}). Do not change this option between \code{ctf estimate} and \code{ctf 3d}. Default=\code{false}.\\
+
 % Tilt-scheme
 \hline
 \multicolumn{2}{|c|}{\textbf{Tilt-scheme}}\\
@@ -32,8 +34,6 @@
 -- \code{startingAngle}\textcolor{myred}{\textbf{*}} & Starting angle, in degrees (e.g. 0).\\
 -- \code{startingDirection}\textcolor{myred}{\textbf{*}} & Starting direction; should the angles decrease or increase (neg or pos).\\
 -- \code{doseSymmetricIncrement}\textcolor{myred}{\textbf{*}} & The number of tilts  before each switch in direction. 0=false, 2="normal" dose symmetric. The original dose symmetric scheme included 0 in the first group. For this, specify the number as a negative number.\\
-\hline
-\newpage
 
 % Defocus estimate
 \hline

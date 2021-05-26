@@ -17,7 +17,7 @@
 \hline
 -- \code{Ali\_mType}\textcolor{myred}{\textbf{*}} & Type of mask; ``cylinder'', ``sphere'', ``rectangle''.\\
 -- \code{particleRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] particle radius, in \si{\angstrom}. It should be the smallest values to contain particle. For particles in a lattice, neighboring particles can be used in alignment by specifying a larger mask size, with \code{Ali\_Radius}, but this parameter must correspond to the central unit.\\
--- \code{Ali\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}. The mask size must be large enough to contain the entire particle (i.e. larger than \code{particleRadius}), the delocalized signal, proper apodization, and to avoid wraparound error in cross-correlation.\\
+-- \code{Ali\_mRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}. The mask size must be large enough to contain the entire particle (i.e. larger than \code{particleRadius}), the delocalized signal, proper apodization, and to avoid wraparound error in cross-correlation.\\
 -- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom}, relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
 -- \code{scaleCalcSize}\textcolor{blue}{\textbf{*}} & Scale the box size (section \ref{sec:algo:avg:box}) by this number. Default=1.5.\\
 
@@ -56,8 +56,6 @@
 -- \code{subTomoMeta}\textcolor{myred}{\textbf{*}} & Project name. At this step, {\emClarity} excepts to find the metadata \code{subTomoMeta}.mat in the project directory. Most output files will have the project name as prefix.\\
 
 -- \code{Raw\_className}\textcolor{myred}{\textbf{*}} & Class ID for subtomogram averaging and alignment. You should leave it set to zero.\\
-
--- \code{Cls\_className}\textcolor{myred}{\textbf{*}} & Class ID for classification. You should leave it set to zero for now. For more information, see section \ref{sec:classification}.\\
 
 -- \code{Fsc\_bfactor}\textcolor{myred}{\textbf{*}} & Global B-factor applied to both references. See \ref{sec:algo:avg:wiener} for more detail. It can be a vector. In this case, if it is an intermediate reconstruction (i.e. reconstructing half-maps with \code{RawAlignment}) only the first value is used, if it is a final reconstruction (i.e. \code{FinalAlignment} introduced in section \ref{sec:final_map}), {\emClarity} will calculate one reconstruction per value registered in this vector.\\
 

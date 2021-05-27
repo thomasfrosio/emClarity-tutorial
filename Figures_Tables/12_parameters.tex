@@ -18,7 +18,7 @@
 \hline
 -- \code{Ali\_mType}\textcolor{myred}{\textbf{*}} & Type of mask; ``cylinder'', ``sphere'', ``rectangle''.\\
 -- \code{particleRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] particle radius, in \si{\angstrom}. It should be the smallest values to contain particle. For particles in a lattice, neighboring particles can be used in alignment by specifying a larger mask size, with \code{Ali\_Radius}, but this parameter must correspond to the central unit.\\
--- \code{Ali\_m::QRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}. The mask size must be large enough to contain the entire particle (i.e. larger than \code{particleRadius}), the delocalized signal, proper apodization, and to avoid wraparound error in cross-correlation.\\
+-- \code{Ali\_mRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}. The mask size must be large enough to contain the entire particle (i.e. larger than \code{particleRadius}), the delocalized signal, proper apodization, and to avoid wraparound error in cross-correlation.\\
 -- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom}, relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
 
 -- \code{Peak\_mRadius} & Further restrict the translations to this radius. By default (0), the translations are limited to the \code{particleRadius}.\\

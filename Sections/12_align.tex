@@ -14,7 +14,7 @@ To call the subtomogram alignment procedure:
 \end{lstlisting}
 where \code{<param.m>} is the parameter file you want to use for this cycle and \code{<cycle\_nb>} is the cycle number. As the alignment needs the reconstructions, one must first run the subtomogram averaging procedure.
 
-The sub-regions are loaded and processed independently from one another during the alignment. Once the particles from a sub-region are aligned, the results from the alignment are saved in the \code{alignResume} directory. {\emClarity} will not re-run the alignment of a particular sub-region if the results for this sub-region are saved in \code{alignResume}. This creates the possibility to run multiple instances of {\emClarity} each one working on a different set of sub-regions. This is especially useful if you have multiple machines connected to the same storage (e.g a cluster). {\emClarity} offers two possibilities:
+The sub-regions are loaded and processed independently from one another during the alignment. Once the particles from a sub-region are aligned, the results from the alignment are saved in the \code{alignResume} directory. {\emClarity} will not re-run the alignment of a particular sub-region if the results for this sub-region are saved in \code{alignResume}. This creates the possibility to run multiple instances of {\emClarity}, each one working on a different set of sub-regions. This is especially useful if you have multiple machines connected to the same storage. {\emClarity} offers two possibilities:
 \begin{itemize}
     \item \textbf{Reverse order}: You can run two instances of {\emClarity}, the first one, as usual, will process the sub-regions in a particular order and save the results on a sub-region basis.
 \begin{lstlisting}

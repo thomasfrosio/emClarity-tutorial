@@ -12,6 +12,7 @@
 -- \code{Cs}\textcolor{myred}{\textbf{*}} & Spherical aberration of the microscope in meters (e.g. 2.7e-6).\\
 -- \code{AMPCONT}\textcolor{myred}{\textbf{*}} & Percent amplitude contrast ratio (e.g. 0.09).\\
 -- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meters per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+-- \code{SuperResolution}\textcolor{myred}{\textbf{*}} & Whether the stacks are super-sampled. If \code{1}, {\emClarity} will Fourier crop by a factor of 2 and set the actual pixel size to \code{2 * PIXEL\_SIZE}. Note that this is not tested anymore, so it is preferable to Fourier crop the stacks beforehand and set it to 0.\\
 
 
 % Fiducials

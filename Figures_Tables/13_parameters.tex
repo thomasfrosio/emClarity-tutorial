@@ -1,4 +1,4 @@
-% Parameters for avg
+% Parameters for tomoCPR
 \renewcommand{\arraystretch}{1.2}
 \begin{longtable}[l]{| l || p{96mm} |}
 \captionsetup{labelfont=bf}
@@ -9,9 +9,10 @@
 \hline
 
 -- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
-
+-- \code{SuperResolution}\textcolor{myred}{\textbf{*}} & Whether or not the \code{fixedStacks/*.fixed} are super-sampled. Not that this should be the same value you used for \code{ctf estimate} in section \ref{sec:defocus_estimate}.\\
 -- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Current binning factor (1 means no binning). The sub-region tomograms at this given binning must be already reconstructed in the \code{cache} directory. If they aren't, you'll need to run \code{ctf 3d} before running this step.\\
-
+\hline
+\newpage
 
 \hline
 \multicolumn{2}{|c|}{\textbf{Fiducial alignment}}\\

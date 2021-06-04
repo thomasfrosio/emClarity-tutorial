@@ -20,11 +20,13 @@ To call the subtomogram averaging procedure:
 
 where \code{<param.m>} is the parameter file you want to use for this cycle, \code{<cycle\_nb>} is the cycle number, starting from 0. Each cycle starts with this step and is usually followed by the subtomogram alignment procedure. \code{RawAlignment} indicates to {\emClarity} that we want to calculate the subtomogram average of the entire half-set. As we'll see later, it is also possible to compute one average (one cluster) for each class.
 
-If you suspect some density is being omitted by the molecular mask or if you see extra "dust" outside your particle, you play with the \code{shape\_mask\_*} parameters. If you want to only calculate the mask, you can run the following, with \code{shape\_mask\_test=1}:
+If you suspect some densities are being omitted by the molecular mask or if you see extra "dust" outside your particle, you can change with the \code{shape\_mask\_*} parameters. If you want to only calculate the mask, you can run the following, with \code{shape\_mask\_test=1}:
 \begin{lstlisting}
 >> emClarity fsc <param.m> <cycle_nb> RawAlignment
 \end{lstlisting}
+The same molecular mask is used for averaging and alignment. The values that you use for the averaging will be used during the alignment.
 
+\newpage
 \subsection{Outputs}
 
 The two subtomogram averages (half-maps) are saved into the project directory, as:\\ \code{cycleXXX\_projectName\_class0\_REF\_EVE.mrc}, and\\ \code{cycleXXX\_projectName\_class0\_REF\_ODD.mrc}.

@@ -9,6 +9,7 @@
 \hline
 
 -- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+-- \code{SuperResolution}\textcolor{myred}{\textbf{*}} & Whether or not the \code{fixedStacks/*.fixed} are super-sampled. Not that this should be the same value you used for \code{ctf estimate} in section \ref{sec:defocus_estimate}.\\
 
 -- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Current bin factor (1 means no binning). The sub-region tomograms at this given binning must be already reconstructed in the \code{cache} directory. If they aren't, you'll need to run \code{ctf 3d} before running this step.\\
 
@@ -67,7 +68,11 @@
 
 -- \code{flgCCCcutoff}\textcolor{blue}{\textbf{*}} & Particles with an alignment score (Constrain Cross-Correlation score, CCC) below this value are ignored from the reconstruction. Default=0.\\
 
--- \code{use\_v2\_SF3D} & Whether or not the new per-particle sampling function procedure should be used, as opposed to the older ``grouped'' sampling functions. This is the default since {\emClarity} 1.5.1.0. Default=1.\\
+-- \code{use\_v2\_SF3D}\textcolor{blue}{\textbf{*}} & Whether or not the new per-particle sampling function procedure should be used, as opposed to the older ``grouped'' sampling functions. This is the default since {\emClarity} 1.5.1.0. Default=1.\\
+
+-- \code{mtfVal}\textcolor{blue}{\textbf{*}} & Type of Modulation Transfer Function (MTF) of the detector. This is applied on top of the volume-normalized SPA Wiener filter (see section \ref{sec:algo:avg:wiener}. Set it to 0 to turn it off, 1 for a stronger version. You can also set your own (see \href{https://github.com/bHimes/emClarity/blob/d624d8b58db6933ee334a6448789dda389f7ca21/testScripts/emClarity.m#L838-L845}{code} and \href{https://github.com/bHimes/emClarity/blob/d624d8b58db6933ee334a6448789dda389f7ca21/statistics/BH_multi_cRef_Vnorm.m#L402-L434}{code}) but this is not tested. Default=2.\\
+
+
 
 %%%%% Optional
 % flgCutOutVolumes

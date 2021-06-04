@@ -22,11 +22,11 @@
 -- \code{Ali\_mType}\textcolor{myred}{\textbf{*}} & Type of mask used for the reconstruction; ``cylinder'', ``sphere'', ``rectangle''.\\
 -- \code{Cls\_mType}\textcolor{myred}{\textbf{*}} & Type of mask to use for the PCA; ``cylinder'', ``sphere'', ``rectangle''.\\
 
--- \code{Ali\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom}, used for the reconstruction.\\
--- \code{Cls\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \si{\angstrom} to use for the PCA.\\
+-- \code{Ali\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \r{A}, used for the reconstruction.\\
+-- \code{Cls\_Radius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \r{A} to use for the PCA.\\
 
--- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom}, used for the reconstruction. These are relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
--- \code{Cls\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \si{\angstrom} to use for the PCA. These are relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
+-- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \r{A}, used for the reconstruction. These are relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
+-- \code{Cls\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \r{A} to use for the PCA. These are relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
 
 -- \code{flgPcaShapeMask} & Calculate and apply a molecular to the difference maps. This molecular mask is calculated using the combined reference. Default=true.\\
 
@@ -36,7 +36,7 @@
 \multicolumn{2}{|c|}{\textbf{PCA}}\\
 \hline
 
--- \code{pcaScaleSpace}\textcolor{myred}{\textbf{*}} & Length scales, i.e. resolution bands, in \si{\angstrom}. If this is a vector, the PCA will be performed for each length scales and you will need to select the principal axes for each length scale.\\
+-- \code{pcaScaleSpace}\textcolor{myred}{\textbf{*}} & Length scales, i.e. resolution bands, in \r{A}. If this is a vector, the PCA will be performed for each length scales and you will need to select the principal axes for each length scale.\\
 
 -- \code{Pca\_randSubset}\textcolor{myred}{\textbf{*}} & For very large data sets (tens of thousands) the principal axes describing the important variation can be obtained with a subset of the data, which saves a lot of computation. If 0, use the entire dataset, otherwise specify the number of particle that should be randomly selected to perform the decomposition. Usually 25\% or at least 3000-4000 is a good way to go.\\
 

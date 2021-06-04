@@ -25,7 +25,7 @@ The references (i.e. the two half-maps) are calculated and saved in the project 
 \begin{enumerate}
     \item \textbf{Center-Of-Mass}: The references $\bm{S}_{ref}$ are masked with $\bm{M}_{ali}$ and their $\bm{M}_{core}$ mask (section \ref{sec:algo:avg:molecular_mask}) is calculated and applied. Then, the $x,\ y,\ z$ center-of-mass (COM) of the two masked $\bm{S}_{ref}$ are calculated and applied to have the center of the box aligned with the COM of the particle averages.
 
-    \item \textbf{Combine low-resolution information}: We assume that the information from the DC-component (i.e. the zero frequency) to the initial resolution cutoff $\bm{h}_{cut}$ are ``shared'' between the two half-maps. As such, this ``shared'' information is averaged and the ``shared'' frequencies of both $\bm{S}_{ref}$ are replaced by this average. The initial resolution cutoff is set to 40\si{\angstrom} by default.
+    \item \textbf{Combine low-resolution information}: We assume that the information from the DC-component (i.e. the zero frequency) to the initial resolution cutoff $\bm{h}_{cut}$ are ``shared'' between the two half-maps. As such, this ``shared'' information is averaged and the ``shared'' frequencies of both $\bm{S}_{ref}$ are replaced by this average. The initial resolution cutoff is set to 40\r{A} by default.
     % maybe explain a bit more where this 40A comes from.
 \end{enumerate}
 

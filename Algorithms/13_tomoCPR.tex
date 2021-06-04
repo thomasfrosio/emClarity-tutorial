@@ -99,7 +99,7 @@ Before refining the fiducial positions, a global shift estimate is calculated, f
     \begin{equation}
         \bm{\mathrm{CC}}_{i} = \mathcal{F}^{-1} \left\{ \bm{W}_{low\text{-}pass}\ {[\bm{W}_{ctf}]}_i\ \mathcal{F}\left\{ {[\bm{I}_{raw}]}_i \right\}\ \overline{\mathcal{F}\left\{ {[\bm{I}_{synt}]}_i \right\}}\ \left|{[\bm{W}_{ctf'}]}_i\right|\ \right\} \bm{M}_{peak\text{-}global}
     \end{equation}
-    where $\bm{W}_{low\text{-}pass}$ is a low-pass filter, with a low-cutoff set by \code{tomoCprLowPass}. ${[\bm{W}_{ctf}]}_i$ is the astigmatic 2D CTF of the view $i$, with envelope. $|{[\bm{W}_{ctf'}]}_i|$ is the astigmatic 2D CTF without envelope and is used to modulate the amplitudes of the reprojected reference to better match the raw data. $\bm{M}_{peak\text{-}global}$ is a spherical mask and limits the translation to $\sim 10$ to $20$\si{\angstrom}.
+    where $\bm{W}_{low\text{-}pass}$ is a low-pass filter, with a low-cutoff set by \code{tomoCprLowPass}. ${[\bm{W}_{ctf}]}_i$ is the astigmatic 2D CTF of the view $i$, with envelope. $|{[\bm{W}_{ctf'}]}_i|$ is the astigmatic 2D CTF without envelope and is used to modulate the amplitudes of the reprojected reference to better match the raw data. $\bm{M}_{peak\text{-}global}$ is a spherical mask and limits the translation to $\sim 10$ to $20$\r{A}.
     
     \item \textbf{Get highest peak position}: This step is identical to the last step of section \ref{sec:algo:align:get_translation} and outputs a translation ${[\bm{T}_{global}]}_i$.
     

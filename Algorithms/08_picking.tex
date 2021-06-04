@@ -22,7 +22,7 @@ The desired sub-region tomogram $\bm{V}$ is reconstructed by weighted back-proje
 
 If the sub-region is larger than \code{Tmp\_targetSize}, it is divided into $c$ equal chunks. For each chunk $c$:
 \begin{enumerate}
-    \item \textbf{Band-pass filter}: The chunk $\bm{V}_c$ is band-pass filtered by $\bm{W}_{bandpass}$, which has a high-pass cutoff at 600\si{\angstrom} to remove ice/intensity gradients and a low-pass cutoff a \code{lowResCut} or if it is not defined a cutoff at the first CTF zero. The zero is estimated based on the average defocus value of the stack (table \ref{tab:ctf_tlt}). The chunk is then centered and standardized.
+    \item \textbf{Band-pass filter}: The chunk $\bm{V}_c$ is band-pass filtered by $\bm{W}_{bandpass}$, which has a high-pass cutoff at 600\r{A} to remove ice/intensity gradients and a low-pass cutoff a \code{lowResCut} or if it is not defined a cutoff at the first CTF zero. The zero is estimated based on the average defocus value of the stack (table \ref{tab:ctf_tlt}). The chunk is then centered and standardized.
     \begin{note}If \code{Tmp\_medianFilter} is defined, the chunk $\bm{V}_c$ is median filtered using the specified neighborhood window.\end{note}
     
     \item \textbf{Positive contrast}: The chunk is low-pass filtered and we assume that \code{lowResCut} cuts before the first zero of the CTF. As such, the negative contrast is ``flipped'' in real-space by simply multiplying the chunk by $-1$.

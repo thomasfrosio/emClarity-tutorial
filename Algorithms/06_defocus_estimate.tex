@@ -52,13 +52,13 @@ For each image, the tiles within the selected regions are extracted, padded by a
 
 This first search consists into finding a first rough estimate of the average defocus of the tilt-series, at the tilt axis. For now, we will ignore the astigmatism and compute the radial average of $|\bm{W}_{exp}(q_{hk},\phi)|$. We refer to this radial average as $|\bm{W}_{exp}(q_{h})|$. In order to find the defocus value $\bm{\mathrm{z}}$, we are going to fit a theoretical CTF curve against this radial average. To do so, a range of defocus value is going to be tested, such as for each $i^{th}$ defocus $\bm{\mathrm{z}}_{i} = \code{defEstimate} \pm \code{defWindow}$, 1nm increment:
 \begin{enumerate}
-    \item \textbf{Get the CTF}: Calculate the 1D theoretical CTF, $\bm{W}_{i}(q_{h})$, in 1/\si{\angstrom}. Note that the defocus $\bm{\mathrm{z}}_i$ is the only variable from one iteration to another.
+    \item \textbf{Get the CTF}: Calculate the 1D theoretical CTF, $\bm{W}_{i}(q_{h})$, in 1/\r{A}. Note that the defocus $\bm{\mathrm{z}}_i$ is the only variable from one iteration to another.
     \begin{gather}
         \lambda = {1226.39\times10^{-2}}/{\sqrt{\code{VOLTAGE} + 0.97845\times10^{-6}\times\code{VOLTAGE}^2}}\notag\\
         E(q_h) = \frac{ e^{ -20{\left( q_h \times \code{PIXEL\_SIZE}\times10^{10} \right)}^{1.25}} + 0.1 } {1.1}\notag\\
         \bm{W}_{i}(q_h) = \sin{ \left( \frac{\pi}{2}\ \code{Cs}\ \lambda^{3}\ q_h^4 + \pi\ \lambda\ \bm{\mathrm{z}}_i\ q_h^2 - \code{AMPCONT} \right)}\ E(q_h)\label{eq:ctf}
     \end{gather} % maybe I should make the Planck constant etc. appear in the equation... % \frac{ 0.5 }{ h_{max}
-    where $\lambda$ is the relativistic wavelength of the electrons, in \si{\angstrom}. $E$ is an ad-hoc envelope, in 1/\si{\angstrom}, down-weighting higher frequencies. \code{Cs} is the spherical aberration constant, in \si{\angstrom}.
+    where $\lambda$ is the relativistic wavelength of the electrons, in \r{A}. $E$ is an ad-hoc envelope, in 1/\r{A}, down-weighting higher frequencies. \code{Cs} is the spherical aberration constant, in \r{A}.
         
     \item \textbf{Background estimate}: if $\bm{\mathrm{z}}_i$ is correct, the zeros of $|\bm{W}_i(q_h)|$ should be at the background level. Therefore, we extract the values of $|\bm{W}_{exp}(q_h)|$ at the $q_h$ frequencies where the zeros should be, i.e. where $\bm{W}_i(q_h)=0$. A smooth curve is fitted to these sampled points and used as the background estimate $\bm{B}_{exp}(q_h)$. We refer to the background-subtracted radial average as $|\bm{W}_{exp-B}(q_h)|$. The position of the zeros varies depending on the defocus, therefore the closer we get from the true defocus, the more accurate the background estimate, the greater the correlation between $|\bm{W}_i(q_h)|$ and $|\bm{W}_{exp-B}(q_h)|$.
         
@@ -135,7 +135,7 @@ To prevent loosing some information during cropping, all the tiles are padded in
     \bm{X}_{i,j} = \mathrm{floor} (\code{paddedSize} \times \bm{f}_{i,j})
 \end{equation}
 
-\begin{note}If the \code{PIXEL\_SIZE} is lower than 2\si{\angstrom}, the Thon rings start to be compressed in a very small frequency window, which makes the analysis more complicated. In this case, we Fourier crop the tilt-series at 2\si{\angstrom}, effectively stretching the power spectrum of the image and making the CTF fitting easier.
+\begin{note}If the \code{PIXEL\_SIZE} is lower than 2\r{A}, the Thon rings start to be compressed in a very small frequency window, which makes the analysis more complicated. In this case, we Fourier crop the tilt-series at 2\r{A}, effectively stretching the power spectrum of the image and making the CTF fitting easier.
 \end{note}
 
 % I am not talking about the first step where we exclude some highly tilted regions (regions that are exposed only in SOME view). TODO.

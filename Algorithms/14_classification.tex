@@ -26,11 +26,11 @@ First, we can exclude from the analysis most of the background by calculating a 
 
 Then, for each resolution band $r$,  either a band-pass filter or a low-pass filter $\bm{W}_r$ is prepared.
 \begin{itemize}
-    \item \textbf{Low-pass filters}: By default, low-pass filters are used and includes frequencies from 400\si{\angstrom} to $(0.9 \times \bm{L}_{r})$\si{\angstrom}. These filters do not define ``resolution bands'' per say and most frequencies will be shared in the resulting filtered references $\bm{S}_r$, but they have produced good results nonetheless.
-    \begin{note}As often, frequencies before 400\si{\angstrom} are removed to center the reference and remove large densities gradients.\end{note}
+    \item \textbf{Low-pass filters}: By default, low-pass filters are used and includes frequencies from 400\r{A} to $(0.9 \times \bm{L}_{r})$\r{A}. These filters do not define ``resolution bands'' per say and most frequencies will be shared in the resulting filtered references $\bm{S}_r$, but they have produced good results nonetheless.
+    \begin{note}As often, frequencies before 400\r{A} are removed to center the reference and remove large densities gradients.\end{note}
     % with the reference we don't expect gradients I think, but...
     
-    \item \textbf{Band-pass filters}: If \code{test\_updated\_bandpass} is true, band-pass filters are used instead and include frequencies from 400\si{\angstrom} to 100\si{\angstrom} and a resolution band at $\bm{L}_r$.
+    \item \textbf{Band-pass filters}: If \code{test\_updated\_bandpass} is true, band-pass filters are used instead and include frequencies from 400\r{A} to 100\r{A} and a resolution band at $\bm{L}_r$.
 \end{itemize}
 
 For visualization, the reference $\bm{S}$ is filtered with the filters $\bm{W}_r$, masked with $\bm{M}_{mol}$, centered and standardized. These volumes are saved in \code{test\_filt.mrc}

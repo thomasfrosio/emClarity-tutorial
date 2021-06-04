@@ -10,7 +10,7 @@
 
 -- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Should match the header of the stacks in \code{fixedStacks/*.fixed}.\\
 -- \code{SuperResolution}\textcolor{myred}{\textbf{*}} & Whether or not the \code{fixedStacks/*.fixed} are super-sampled. Not that this should be the same value you used for \code{ctf estimate} in section \ref{sec:defocus_estimate}.\\
--- \code{Tmp\_samplingRate}\textcolor{myred}{\textbf{*}} & Sampling (i.e. binning) at which the sub-region should be reconstructed to perform the template matching (1 means no binning). The sampling rate should be chosen to give a running pixel size between 8 and 12\si{\angstrom}/pix.\\
+-- \code{Tmp\_samplingRate}\textcolor{myred}{\textbf{*}} & Sampling (i.e. binning) at which the sub-region should be reconstructed to perform the template matching (1 means no binning). The sampling rate should be chosen to give a running pixel size between 8 and 12\r{A}/pix.\\
 
 \hline
 \multicolumn{2}{|c|}{\textbf{Tomogram reconstruction}}\\
@@ -18,7 +18,7 @@
 
 -- \code{erase\_beads\_after\_ctf} & Whether or not the fiducial beads should be removed before or after CTF multiplication. Default=\code{0}.\\
 
--- \code{beadDiameter}\textcolor{myred}{\textbf{*}} & Bead diameter in \si{\angstrom}.\\
+-- \code{beadDiameter}\textcolor{myred}{\textbf{*}} & Bead diameter in \r{A}.\\
 
 -- \code{applyExposureFilter} & Whether or not the exposure filter should be applied. If you turn it off, make sure it is turned-off during subtomogram averaging as well.\\
 
@@ -37,13 +37,13 @@
 \multicolumn{2}{|c|}{\textbf{Particle}}\\
 \hline
 
--- \code{particleRadius}\textcolor{myred}{\textbf{*}} & Particle radii, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. In this context, it defines a region around a cross-correlation peak to remove from consideration after a particle is selected. See \code{Peak\_mRadius} for more details.\\
+-- \code{particleRadius}\textcolor{myred}{\textbf{*}} & Particle radii, in \r{A}. Format is [$R_X,\ R_Y,\ R_Z$]. In this context, it defines a region around a cross-correlation peak to remove from consideration after a particle is selected. See \code{Peak\_mRadius} for more details.\\
 
--- \code{Ali\_mRadius}\textcolor{myred}{\textbf{*}} & Alignment mask radii, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. In this case, it is used to pad/trim the template to this size.\\
+-- \code{Ali\_mRadius}\textcolor{myred}{\textbf{*}} & Alignment mask radii, in \r{A}. Format is [$R_X,\ R_Y,\ R_Z$]. In this case, it is used to pad/trim the template to this size.\\
 
 -- \code{Peak\_mType} & Type (i.e. shape) of the cross-correlation peaks. Can be sphere, cylinder or rectangle. See section \ref{sec:algo:picking} for more details. Default=sphere.\\
 
--- \code{Peak\_mRadius} & Radius of the cross-correlation peaks, in \si{\angstrom}. Format is [$R_X,\ R_Y,\ R_Z$]. See section \ref{sec:algo:picking} for more details. Default= $0.75\times\code{particleRadius}$.\\
+-- \code{Peak\_mRadius} & Radius of the cross-correlation peaks, in \r{A}. Format is [$R_X,\ R_Y,\ R_Z$]. See section \ref{sec:algo:picking} for more details. Default= $0.75\times\code{particleRadius}$.\\
 
 -- \code{diameter\_fraction\_for\_local\_stats} & TODO. Default=\code{1}.\\
 
@@ -61,7 +61,7 @@
 
 --\code{Tmp\_targetSize} & Size, in pixel, of the chunk to process. If the sub-region is too big, the processing will be split into individual chunks. Format is [$X, Y, Z$]. Default=\code{[512,512,512]}.\\
 
---\code{Tmp\_bandpass} & A band-pass filter is applied to the template and the tomogram. This parameter defined the band-pass filter. Should be vector of 3 values, aka [1,2,3]. (1) is the filter value at the DC (i.e. zero) frequency, between 0 and 1. (2) is the high-pass cutoff (where the pass is back to 1) in \si{\angstrom}. (3) is the low-pass cutoff (where the pass starts to roll off) in \si{\angstrom}. (2) should be larger than (3). Default=\code{[1e-3,600,28]}.\\
+--\code{Tmp\_bandpass} & A band-pass filter is applied to the template and the tomogram. This parameter defined the band-pass filter. Should be vector of 3 values, aka [1,2,3]. (1) is the filter value at the DC (i.e. zero) frequency, between 0 and 1. (2) is the high-pass cutoff (where the pass is back to 1) in \r{A}. (3) is the low-pass cutoff (where the pass starts to roll off) in \r{A}. (2) should be larger than (3). Default=\code{[1e-3,600,28]}.\\
 
 --\code{rescale\_mip} & TODO. Default=\code{1}.\\
 

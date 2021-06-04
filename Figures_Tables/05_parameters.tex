@@ -10,11 +10,11 @@
 
 -- \code{beadDiameter}\textcolor{myred}{\textbf{*}} & Bead diameter in meters (e.g. 10e-9). If 0, the beads are ignored during the alignment, but the \code{.erase} file is still generated using \href{https://bio3d.colorado.edu/imod/betaDoc/man/findbeads3d.html}{findbeads3d} with \code{-BeadSize}=10.5nm.\\
 
--- \code{autoAli\_max\_resolution} & Low-pass cutoff, in $\si{\angstrom}$, used in alignment. An additional median filter is applied to the images before alignment. The filtered series are only used for alignment. Default=18\\
+-- \code{autoAli\_max\_resolution} & Low-pass cutoff, in $\r{A}$, used in alignment. An additional median filter is applied to the images before alignment. The filtered series are only used for alignment. Default=18\\
 
--- \code{autoAli\_min\_sampling\_rate} & Maximum pixel size used for alignment, in $\si{\angstrom}$ per pixel. If you have a pixel size of 2, then the alignment will start at bin 5 using the default. Default=10.\\
+-- \code{autoAli\_min\_sampling\_rate} & Maximum pixel size used for alignment, in $\r{A}$ per pixel. If you have a pixel size of 2, then the alignment will start at bin 5 using the default. Default=10.\\
 
--- \code{autoAli\_max\_sampling\_rate} & Minimum pixel size used for alignment, in $\si{\angstrom}$ per pixel. If you have a pixel size of 2, then the alignment will end at bin 2 using the default. Default=3.\\
+-- \code{autoAli\_max\_sampling\_rate} & Minimum pixel size used for alignment, in $\r{A}$ per pixel. If you have a pixel size of 2, then the alignment will end at bin 2 using the default. Default=3.\\
 
 -- \code{autoAli\_iterations\_per\_bin} & The number of patch tracking iterations, for each bin. Default=3. \\
 
@@ -26,7 +26,7 @@
 
 -- \code{autoAli\_patch\_overlap} & Fractional overlap in X and Y between patches that are tracked by correlation. This influences the number of patches. Corresponds to \code{-OverlapOfPatchesXandY} from \href{https://bio3d.colorado.edu/imod/doc/man/tiltxcorr.html}{tiltxcorr}. Default=0.5.\\
 
--- \code{autoAli\_max\_shift\_in\_angstroms} & Maximum shifts allowed, in $\si{\angstrom}$, for the patch tracking alignment. Default=40.\\
+-- \code{autoAli\_max\_shift\_in\_angstroms} & Maximum shifts allowed, in $\r{A}$, for the patch tracking alignment. Default=40.\\
 
 -- \code{autoAli\_max\_shift\_factor} & The maximum shifts allowed are progressively reduced with the iterations $i$, such as \footnote{$\code{int}( \code{autoAli\_max\_shift\_in\_angstroms} / i^{\code{autoAli\_max\_shift\_factor}} ) + 1$}. Default=1.\\
 

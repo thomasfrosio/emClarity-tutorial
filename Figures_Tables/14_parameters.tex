@@ -1,4 +1,4 @@
-% Parameters for avg
+% Parameters for pca
 \renewcommand{\arraystretch}{1.2}
 \begin{longtable}[l]{| l || p{110mm} |}
 \captionsetup{labelfont=bf}
@@ -9,7 +9,7 @@
 \hline
 
 -- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
-
+-- \code{SuperResolution}\textcolor{myred}{\textbf{*}} & Whether or not the \code{fixedStacks/*.fixed} are super-sampled. Not that this should be the same value you used for \code{ctf estimate} in section \ref{sec:defocus_estimate}.\\
 -- \code{Cls\_samplingRate}\textcolor{myred}{\textbf{*}} & Current binning factor (1 means no binning). The sub-region tomograms at this given binning must be already reconstructed in the \code{cache} directory. If they aren't, you'll need to run \code{ctf 3d} before running this step.\\
 
 -- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Binning factor (1 means no binning) of the half-maps of the current cycle. If this is different from \code{Cls\_samplingRate}, the reconstructions will be resampled to match \code{Cls\_samplingRate}.\\
@@ -50,9 +50,9 @@
 
 -- \code{Pca\_clusters}\textcolor{myred}{\textbf{*}} & The number of clusters to find. If this is a vector, the clustering will be calculated for each registered value.\\
 
--- \code{Pca\_distMeasure} & This corresponds to the \code{Distance} entry of the \code{kmeans} function of MATLAB. By default, the squared Euclidean distance metric, i.e. each centroid is the mean of the points in that cluster.\\
+-- \code{Pca\_distMeasure} & This corresponds to the \code{Distance} entry of the \code{kmeans} function of {\MATLAB}. By default, the squared Euclidean distance metric, i.e. each centroid is the mean of the points in that cluster.\\
 
--- \code{Pca\_nReplicates} & This corresponds to the \code{Replicates} entry of the \code{kmeans} function of MATLAB. By default, the number of replicates is set to 128, i.e. the number of times to repeat clustering using new initial cluster centroid positions.\\
+-- \code{Pca\_nReplicates} & This corresponds to the \code{Replicates} entry of the \code{kmeans} function of {\MATLAB}. By default, the number of replicates is set to 128, i.e. the number of times to repeat clustering using new initial cluster centroid positions.\\
 
 \hline
 \multicolumn{2}{|c|}{\textbf{Others}}\\

@@ -1,4 +1,4 @@
-% Parameters for avg
+% Parameters for alignRaw
 \renewcommand{\arraystretch}{1.2}
 \begin{longtable}[l]{| l || p{110.5mm} |}
 \captionsetup{labelfont=bf}
@@ -10,6 +10,7 @@
 \hline
 
 -- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Must match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+-- \code{SuperResolution}\textcolor{myred}{\textbf{*}} & Whether or not the \code{fixedStacks/*.fixed} are super-sampled. Not that this should be the same value you used for \code{ctf estimate} in section \ref{sec:defocus_estimate}.\\
 
 -- \code{Ali\_samplingRate}\textcolor{myred}{\textbf{*}} & Current bin factor (1 means no binning). The sub-region tomograms at this given binning must be already reconstructed in the \code{cache} directory. You must use the same sampling than during \code{avg}.\\
 
@@ -57,7 +58,7 @@
 
 -- \code{flgClassify}\textcolor{myred}{\textbf{*}} & Whether or not this cycle is a classification cycle. It must be 0 if subtomogram alignment is the next step. More information on this in \ref{sec:classification}.\\
 
--- \code{use\_v2\_SF3D} & Whether or not the new per-particle sampling function procedure should be used, as opposed to the older ``grouped'' sampling functions. This is the default since {\emClarity} 1.5.1.0. Default=1.\\
+-- \code{use\_v2\_SF3D}\textcolor{blue}{\textbf{*}} & Whether or not the new per-particle sampling function procedure should be used, as opposed to the older ``grouped'' sampling functions. This is the default since {\emClarity} 1.5.1.0. Default=1.\\
 
 % I don't think this one is really supported...?
 %-- \code{flgCutOutVolumes}\textcolor{blue}{\textbf{*}} & ... Default=0.\\

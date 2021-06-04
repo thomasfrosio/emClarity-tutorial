@@ -9,6 +9,7 @@
 \hline
 
 -- \code{PIXEL\_SIZE}\textcolor{myred}{\textbf{*}} & Pixel size in meter per pixel (e.g. 1.8e-10). Should match the header of the stacks in \code{fixedStacks/*.fixed}.\\
+-- \code{SuperResolution}\textcolor{myred}{\textbf{*}} & Whether or not the \code{fixedStacks/*.fixed} are super-sampled. Not that this should be the same value you used for \code{ctf estimate} in section \ref{sec:defocus_estimate}.\\
 -- \code{Tmp\_samplingRate}\textcolor{myred}{\textbf{*}} & Sampling (i.e. binning) at which the sub-region should be reconstructed to perform the template matching (1 means no binning). The sampling rate should be chosen to give a running pixel size between 8 and 12\si{\angstrom}/pix.\\
 
 \hline
@@ -31,9 +32,6 @@
 % flgDampenAliasedFrequencies
 % lowResCut = this is deprecated apparently. so I guess default to 12?
 % SuperResolution is required...
-
-\hline
-\newpage
 
 \hline
 \multicolumn{2}{|c|}{\textbf{Particle}}\\

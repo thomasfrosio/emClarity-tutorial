@@ -10,7 +10,7 @@
 
 -- \code{Tmp\_samplingRate}\textcolor{myred}{\textbf{*}} & Sampling (i.e. binning) at which the template matching was ran. It should corresponds to the binning registered in the filename of the .csv and .mod file.\\ \hline
 
--- \code{fscGoldSplitOnTomos}\textcolor{myred}{\textbf{*}} & Whether or not the particles from the same subregions should be kept in the same half-set or distributed randomly. Two sub-regions are overlapping, you can set this parameter to 1/True to prevent the duplicates to be in the same half-set. However, we do recommend to keep the sub-regions from overlapping and always keep this parameter to 0/False.\\ \hline
+-- \code{fscGoldSplitOnTomos}\textcolor{myred}{\textbf{*}} & Whether or not the particles from the same subregions should be kept in the same half-set or distributed randomly. We do recommend to keep the sub-regions from overlapping and keep this parameter to 0/False. However, with tightly packed particles, which share a lot of their densities with other particles, it is better to set this parameter to 1/True to make sure the half sets don't share the same voxels.\\ \hline
 
 -- \code{lowResCut} & This correspond to a rough estimate of the initial resolution of the data-set, directly coming out from the picking. The default value is set to 40\r{A} and it can be lowered for data-sets collected at low defocus. In most situation, the default value is fine to start with. As the processing goes, {\emClarity} will progressively lower this resolution estimate using the FSC.\\ \hline
 

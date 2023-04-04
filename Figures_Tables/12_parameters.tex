@@ -22,7 +22,8 @@
 -- \code{Ali\_mRadius}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] mask radius, in \r{A}. The mask size must be large enough to contain the entire particle (i.e. larger than \code{particleRadius}), the delocalized signal, proper apodization, and to avoid wraparound error in cross-correlation.\\
 -- \code{Ali\_mCenter}\textcolor{myred}{\textbf{*}} & [$x,\ y,\ z$] shifts, in \r{A}, relative to the center of the reconstruction. Positive shifts translate the \code{Ali\_mType} mask to the right of the axis.\\
 
--- \code{Peak\_mRadius} & Further restrict the translations to this radius. By default (0), the translations are limited to the \code{particleRadius}.\\
+-- \code{Peak\_mRadius} & Further restrict the translations to this radius. By default, the translations are limited to the \code{particleRadius}. If specified, \code{Peak\_mType} should also be specified.\\
+-- \code{Peak\_mType} & Further restrict the translations. Masked applied to the correlation map, should be ``cylinder'', ``sphere'' or ``rectangle''.\\
 
 -- \code{flgCenterRefCOM} & Whether or not the references should be shifted to their center-of-mass before starting the alignment\footnote{For membrane proteins, or phage particles for example, this parameter should be shut off either from the beginning, or after a cycle or two.}. Default=1.\\
 
